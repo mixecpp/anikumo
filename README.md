@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AnimeWeb
 
-## Getting Started
+Anime discovery + watching site. Next.js 15, Prisma/SQLite, AniList metadata.
 
-First, run the development server:
+## Run
 
 ```bash
+npm install
+npx prisma migrate dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:8080
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Configure (`.env`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `LIBRARY_DIR` — folder with your anime files, one subfolder per series. Use single quotes for Windows paths.
+- `YOUTUBE_API_KEY` — optional; finds licensed free full episodes on official channels (Muse Asia, Ani-One, etc.).
+- `AUTH_SECRET` — random string used to sign sessions.
 
-## Learn More
+## Video sources
 
-To learn more about Next.js, take a look at the following resources:
+Sources are pluggable providers in `lib/providers/`. Each implements the `Provider` interface in `lib/providers/types.ts`
+and is registered in `lib/providers/index.ts`. Built in:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Provider | What it does |
+|---|---|
+| `local` | Streams files from `LIBRARY_DIR` (range requests, SRT/VTT subtitles) |
+| `youtube` | Embeds official free uploads from allow-listed channels |
+| `official` | Deep links to Crunchyroll/Netflix/etc. from AniList |
