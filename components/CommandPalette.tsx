@@ -29,6 +29,7 @@ import {
 import { readRecent } from "@/lib/recent";
 import { toast } from "@/lib/toast";
 import { usePrefs, useT } from "./PrefsProvider";
+import { useScrollLock } from "./useScrollLock";
 
 type Item = { id: string; label: string; hint?: string; icon?: LucideIcon; image?: string; group: string; run: () => void | Promise<void> };
 type SearchHit = { id: number; title: string; cover: string; year: number | null; format: string | null };
@@ -41,6 +42,7 @@ export default function CommandPalette() {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [active, setActive] = useState(0);
+  useScrollLock(open);
   const listRef = useRef<HTMLDivElement>(null);
   const paletteKey = prefs.shortcuts.palette;
 

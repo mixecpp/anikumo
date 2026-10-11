@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { SHORTCUT_LABELS, type ShortcutAction } from "@/lib/prefs-shared";
 import { usePrefs, useT } from "./PrefsProvider";
+import { useScrollLock } from "./useScrollLock";
 
 const ROUTES: Partial<Record<ShortcutAction, string>> = {
   goHome: "/",
@@ -35,6 +36,7 @@ export default function Shortcuts() {
   const router = useRouter();
   const { prefs } = usePrefs();
   const [open, setOpen] = useState(false);
+  useScrollLock(open);
   const pendingG = useRef<number | null>(null);
   const keys = prefs.shortcuts;
 

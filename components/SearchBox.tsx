@@ -173,7 +173,7 @@ export default function SearchBox() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="glass-strong absolute right-0 mt-2 max-h-[min(70vh,560px)] w-full min-w-[320px] overflow-y-auto overscroll-contain rounded-xl p-1"
+            className="glass-strong absolute right-0 mt-2 max-h-[min(70dvh,560px)] w-full min-w-[min(320px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain rounded-xl p-1"
           >
             <div id={listId} role="listbox" aria-label="Search results">
               {searching && loading && !groups.length && (

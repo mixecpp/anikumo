@@ -64,7 +64,7 @@ export default function AuthForm({ mode, covers }: { mode: "login" | "register";
   const columns = [0, 1, 2].map((c) => covers.filter((_, i) => i % 3 === c));
 
   return (
-    <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-[1200px] items-center gap-12 px-4 py-10 md:px-8 lg:grid-cols-2">
+    <div className="mx-auto grid min-h-[calc(100svh-4rem)] max-w-[1200px] items-center gap-12 px-4 py-10 md:px-8 lg:grid-cols-2">
       <div className="relative hidden h-[620px] overflow-hidden rounded-3xl lg:block" aria-hidden>
         <div className="absolute inset-0 grid grid-cols-3 gap-3 p-3">
           {columns.map((col, c) => (

@@ -22,7 +22,7 @@ export default function NavShell({ children }: { children: React.ReactNode }) {
     <header
       ref={ref}
       data-scrolled="false"
-      className="sticky top-0 z-40 border-b border-transparent transition-[background-color,border-color] duration-200 data-[scrolled=true]:border-white/[0.06] data-[scrolled=true]:bg-bg/80 data-[scrolled=true]:backdrop-blur-xl"
+      className="sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)] border-transparent transition-[background-color,border-color] duration-200 data-[scrolled=true]:border-white/[0.06] data-[scrolled=true]:bg-bg/80 data-[scrolled=true]:backdrop-blur-xl"
     >
       {children}
     </header>

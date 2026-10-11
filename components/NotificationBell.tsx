@@ -103,7 +103,7 @@ export default function NotificationBell({ initialUnread }: { initialUnread: num
                 </button>
               )}
             </div>
-            <div className="thin-scroll max-h-[60vh] overflow-y-auto">
+            <div className="thin-scroll max-h-[60dvh] overflow-y-auto overscroll-contain">
               {items === null ? (
                 <div className="space-y-2 p-3">
                   {[0, 1, 2].map((i) => (

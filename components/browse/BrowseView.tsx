@@ -12,6 +12,7 @@ import AnimeCard from "../AnimeCard";
 import Select from "../Select";
 import TagPicker from "./TagPicker";
 import { usePrefs, useT } from "../PrefsProvider";
+import { useScrollLock } from "../useScrollLock";
 
 type Page = { media: MediaCard[]; hasNextPage: boolean };
 type Preset = { id: string; name: string; query: string };
@@ -26,6 +27,7 @@ export default function BrowseView({ params, initial, error, presets: initialPre
   const { loggedIn } = usePrefs();
   const [pending, startTransition] = useTransition();
   const [sheetOpen, setSheetOpen] = useState(false);
+  useScrollLock(sheetOpen);
   const [dense, setDense] = useState(false);
   const [presets, setPresets] = useState(initialPresets);
   const [surprising, setSurprising] = useState(false);
@@ -114,7 +116,7 @@ export default function BrowseView({ params, initial, error, presets: initialPre
   return (
     <div className="grid gap-10 lg:grid-cols-[240px_1fr]">
       <aside className="hidden lg:block">
-        <div className="thin-scroll sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-6 pr-2">{filters}</div>
+        <div className="thin-scroll sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto pb-6 pr-2">{filters}</div>
       </aside>
 
       <div className="min-w-0">
@@ -246,7 +248,7 @@ export default function BrowseView({ params, initial, error, presets: initialPre
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 400, damping: 40 }}
-              className="glass-strong fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl p-5 pb-8 lg:hidden"
+              className="glass-strong fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-2xl p-5 pb-[max(2rem,env(safe-area-inset-bottom))] lg:hidden"
               role="dialog"
               aria-label="Filters"
             >

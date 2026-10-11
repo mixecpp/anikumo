@@ -4,20 +4,21 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
+import { useScrollLock } from "./useScrollLock";
 
 /** Official YouTube trailer in a lightbox. Pass null to close. */
 export default function TrailerModal({ trailer, onClose }: { trailer: { id: string; title: string } | null; onClose: () => void }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  useScrollLock(!!trailer);
+
   useEffect(() => {
     if (!trailer) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
     };
   }, [trailer, onClose]);
 

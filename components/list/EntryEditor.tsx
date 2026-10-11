@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Eye, EyeOff, LoaderCircle, Minus, Pin, Plus, Repeat, X } from "lucide-react";
 import { LIST_STATUSES, STATUS_DOT, STATUS_LABEL, type ListEntryDTO, type ListStatus } from "@/lib/list-shared";
 import ScorePicker from "./ScorePicker";
+import { useScrollLock } from "../useScrollLock";
 
 type Draft = Pick<ListEntryDTO, "status" | "score" | "progress" | "notes" | "tags" | "pinned" | "hiddenFromContinue" | "rewatching" | "rewatchEpisode">;
 
@@ -33,6 +34,7 @@ export default function EntryEditor({
   const [draft, setDraft] = useState<Draft | null>(null);
   const [tagInput, setTagInput] = useState("");
   const [saving, setSaving] = useState(false);
+  useScrollLock(open && !!draft);
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
@@ -86,7 +88,7 @@ export default function EntryEditor({
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className="glass-strong thin-scroll max-h-[92vh] w-full overflow-y-auto rounded-t-2xl sm:max-w-lg sm:rounded-2xl"
+            className="glass-strong thin-scroll max-h-[92dvh] w-full overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)] rounded-t-2xl sm:max-w-lg sm:rounded-2xl"
           >
             <div className="flex items-center gap-3 border-b border-white/[0.06] p-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}

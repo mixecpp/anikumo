@@ -150,7 +150,7 @@ export default async function AnimePage({ params }: Props) {
       <SetAmbient images={[m.bannerImage ?? m.coverImage.extraLarge]} />
       <TrackRecent id={id} title={title} cover={m.coverImage.large} />
 
-      <div className="relative -mt-16 h-[44vh] min-h-[320px] w-full overflow-hidden">
+      <div className="relative -mt-16 h-[44svh] min-h-[300px] w-full overflow-hidden">
         {m.bannerImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={m.bannerImage} alt="" className="h-full w-full object-cover opacity-80 [mask-image:linear-gradient(to_bottom,black_35%,transparent)]" />

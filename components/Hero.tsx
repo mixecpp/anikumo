@@ -33,7 +33,7 @@ export default function Hero({ items }: { items: HeroItem[] }) {
 
   return (
     <section
-      className="relative -mt-16 h-[72vh] min-h-[520px] w-full overflow-hidden"
+      className="relative -mt-16 h-[72svh] min-h-[480px] w-full overflow-hidden"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >

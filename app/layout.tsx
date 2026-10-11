@@ -37,6 +37,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Lets the layout use the full screen on notched phones; safe-area insets keep content clear.
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#0e0e0f" },
     { media: "(prefers-color-scheme: light)", color: "#f7f7f8" },
@@ -50,7 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={prefs.locale} data-theme={prefs.theme} style={{ "--accent": prefs.accent } as React.CSSProperties}>
-      <body className={`${geist.variable} ${geistMono.variable} relative min-h-screen`}>
+      <body className={`${geist.variable} ${geistMono.variable} relative min-h-svh`}>
         <PrefsProvider prefs={prefs} loggedIn={!!userId}>
           <Providers>
             <a href="#main" className="sr-only z-[100] rounded-lg bg-fg px-3 py-2 text-sm text-bg focus:not-sr-only focus:fixed focus:left-3 focus:top-3">

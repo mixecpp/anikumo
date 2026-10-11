@@ -8,7 +8,7 @@ export default function AmbientBackground() {
   const { images } = useAmbientOverride();
   const src = images?.[0];
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[70vh] overflow-hidden">
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[70svh] overflow-hidden">
       <AnimatePresence>
         {src && (
           <motion.img
