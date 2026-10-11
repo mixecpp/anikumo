@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Search, Star } from "lucide-react";
+import FadeRow from "./FadeRow";
 
 type Item = {
   id: number;
@@ -83,7 +84,7 @@ export default function ScheduleView({ items, mine, loggedIn }: { items: Item[];
 
   return (
     <div className="mt-8">
-      <div className="scrollbar-none -mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+      <FadeRow className="scrollbar-none -mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
         <div className="panel grid min-w-[640px] grid-cols-8 gap-1 rounded-2xl p-1">
           {days.map(([k, { date, items: dayItems }]) => {
             const on = active?.[0] === k;
@@ -104,7 +105,7 @@ export default function ScheduleView({ items, mine, loggedIn }: { items: Item[];
             );
           })}
         </div>
-      </div>
+      </FadeRow>
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
         <label className="relative min-w-[200px] flex-1 sm:max-w-xs">

@@ -10,6 +10,7 @@ import QuickStatus from "../list/QuickStatus";
 import Countdown from "../Countdown";
 import Select from "../Select";
 import { useTitle } from "../PrefsProvider";
+import FadeRow from "../FadeRow";
 
 const GROUPS: { key: string; label: string; formats: string[] }[] = [
   { key: "tv", label: "TV", formats: ["TV"] },
@@ -56,7 +57,7 @@ export default function SeasonChart({ media, statuses, upcoming }: { media: Seas
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="scrollbar-none flex gap-1 overflow-x-auto rounded-xl bg-white/[0.04] p-1">
+        <FadeRow className="scrollbar-none flex gap-1 overflow-x-auto rounded-xl bg-white/[0.04] p-1">
           {tabs.map((t) => (
             <button key={t.key} onClick={() => setGroup(t.key)} className={`relative shrink-0 rounded-lg px-3 py-1.5 text-sm transition-colors ${group === t.key ? "text-fg" : "text-muted hover:text-fg"}`}>
               {group === t.key && <motion.span layoutId="season-group" className="absolute inset-0 rounded-lg bg-white/[0.09]" transition={{ type: "spring", stiffness: 500, damping: 40 }} />}
@@ -65,7 +66,7 @@ export default function SeasonChart({ media, statuses, upcoming }: { media: Seas
               </span>
             </button>
           ))}
-        </div>
+        </FadeRow>
         <label className="relative min-w-[160px] flex-1 sm:max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter season" className="input !py-2 !pl-9 text-sm" aria-label="Filter season" />

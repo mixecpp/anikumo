@@ -16,6 +16,7 @@ import { getContinueWatching } from "@/lib/progress";
 import { arrangeContinue, becauseYouWatched, unfinished } from "@/lib/home-personal";
 import { getUi } from "@/lib/server-i18n";
 import { pickTitle } from "@/lib/prefs-shared";
+import FadeRow from "@/components/FadeRow";
 
 export const dynamic = "force-dynamic";
 
@@ -99,10 +100,14 @@ export default async function Home() {
         {hasContinue && <MediaGrid title={t("home.trending")} items={trending} href="/browse?sort=trending" ranked />}
         <MediaGrid title={t("home.season")} items={noEcchi(data.seasonal.media)} href="/season" />
 
-        <div className="grid gap-x-8 gap-y-12 lg:grid-cols-2">
-          <RankedList title={t("home.top")} items={noEcchi(data.top.media)} href="/charts" />
-          <RankedList title={t("home.popular")} items={noEcchi(data.popular.media)} href="/browse?sort=popularity" />
-        </div>
+        <FadeRow className="scrollbar-none -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 md:mx-0 md:grid md:snap-none md:grid-cols-2 md:gap-x-8 md:overflow-visible md:px-0">
+          <div className="w-[88%] shrink-0 snap-start md:w-auto">
+            <RankedList title={t("home.top")} items={noEcchi(data.top.media)} href="/charts" />
+          </div>
+          <div className="w-[88%] shrink-0 snap-start md:w-auto">
+            <RankedList title={t("home.popular")} items={noEcchi(data.popular.media)} href="/browse?sort=popularity" />
+          </div>
+        </FadeRow>
       </div>
     </div>
   );

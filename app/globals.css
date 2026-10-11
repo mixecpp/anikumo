@@ -416,3 +416,25 @@ button.chip:hover {
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }
+
+/*
+ * Grid items default to "never narrower than my longest unbroken line", so one long title can
+ * stretch a whole column past a phone screen. Let them shrink; text inside truncates/wraps instead.
+ */
+.grid > * {
+  min-width: 0;
+}
+
+/* Edge fades for sideways-scrolling rows (see useEdgeFade). */
+[data-fade-right="true"] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+}
+[data-fade-left="true"] {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent);
+}
+[data-fade-left="true"][data-fade-right="true"] {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+}

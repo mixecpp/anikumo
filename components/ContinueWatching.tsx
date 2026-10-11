@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Play } from "lucide-react";
 import SectionHeading from "./SectionHeading";
+import FadeRow from "./FadeRow";
 
 export type ContinueItem = {
   anilistId: number;
@@ -18,12 +19,12 @@ export default function ContinueWatching({ items }: { items: ContinueItem[] }) {
   return (
     <section>
       <SectionHeading title="Continue watching" href="/account/history" hrefLabel="History" />
-      <div className="grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-3">
+      <FadeRow className="scrollbar-none -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:gap-x-4 sm:gap-y-6 sm:overflow-visible sm:px-0 md:grid-cols-3">
         {items.slice(0, 6).map((it) => {
           const nextEp = it.completed ? it.nextEpisode ?? it.episode + 1 : it.episode;
           const pct = it.completed ? 0 : it.durationSeconds ? (it.progressSeconds / it.durationSeconds) * 100 : 0;
           return (
-            <Link key={it.anilistId} href={`/watch/${it.anilistId}/${nextEp}`} className="group block min-w-0">
+            <Link key={it.anilistId} href={`/watch/${it.anilistId}/${nextEp}`} className="group block w-[78%] min-w-0 shrink-0 snap-start sm:w-auto">
               <div className="relative aspect-video overflow-hidden rounded-xl bg-white/[0.04] ring-1 ring-inset ring-white/[0.06]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={it.coverImage} alt="" className="h-full w-full object-cover object-[center_25%] transition duration-500 group-hover:scale-[1.04]" />
@@ -44,7 +45,7 @@ export default function ContinueWatching({ items }: { items: ContinueItem[] }) {
             </Link>
           );
         })}
-      </div>
+      </FadeRow>
     </section>
   );
 }

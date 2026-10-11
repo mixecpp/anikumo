@@ -178,7 +178,7 @@ function UserActions({ user, self, onChange }: { user: Row; self: boolean; onCha
           )}
         </div>
         <form onSubmit={async (e) => (e.preventDefault(), (await run({ action: "resetPassword", password }, "Password reset")) && setPassword(""))} className="flex gap-2">
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New password (8+)" minLength={8} className="input !py-1.5 text-xs" aria-label="New password" autoComplete="new-password" />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New password" minLength={8} className="input !py-1.5 text-xs" aria-label="New password" autoComplete="new-password" />
           <button disabled={password.length < 8} className="btn btn-ghost !py-1.5 !text-xs">
             Reset password
           </button>

@@ -8,6 +8,7 @@ import { LIST_STATUSES, STATUS_DOT, STATUS_LABEL, type ListEntryDTO, type ListSt
 import { toast, undoable } from "@/lib/toast";
 import Select from "../Select";
 import EntryEditor from "./EntryEditor";
+import FadeRow from "../FadeRow";
 
 type Meta = Record<number, { total: number | null; format: string | null; year: number | null; newEpisodes: number }>;
 
@@ -115,9 +116,9 @@ export default function ListView({ initial, meta }: { initial: ListEntryDTO[]; m
 
   return (
     <div>
-      <div className="scrollbar-none -mx-4 flex gap-1 overflow-x-auto px-4 md:mx-0 md:px-0">
+      <FadeRow className="scrollbar-none -mx-4 flex gap-1 overflow-x-auto px-4 md:mx-0 md:px-0">
         {tabs.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} className={`relative shrink-0 rounded-lg px-3 py-1.5 text-sm transition-colors ${tab === t.key ? "text-fg" : "text-muted hover:text-fg"}`}>
+          <button key={t.key} onClick={() => setTab(t.key)} aria-pressed={tab === t.key} className={`relative shrink-0 rounded-lg px-3 py-1.5 text-sm transition-colors ${tab === t.key ? "text-fg" : "text-muted hover:text-fg"}`}>
             {tab === t.key && <motion.span layoutId="list-tab" className="absolute inset-0 rounded-lg bg-white/[0.08]" transition={{ type: "spring", stiffness: 500, damping: 40 }} />}
             <span className="relative flex items-center gap-1.5">
               {t.key !== "ALL" && <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[t.key]}`} />}
@@ -125,7 +126,7 @@ export default function ListView({ initial, meta }: { initial: ListEntryDTO[]; m
             </span>
           </button>
         ))}
-      </div>
+      </FadeRow>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <label className="relative min-w-[180px] flex-1 sm:max-w-xs">

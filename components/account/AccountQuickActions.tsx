@@ -6,13 +6,14 @@ import { Globe, LogOut, Megaphone, Shield } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useT } from "../PrefsProvider";
 import { NewDot, useChangelogUnseen } from "../WhatsNew";
+import FadeRow from "../FadeRow";
 
 /** Phones/tablets have no top-right account menu, so its extra actions live here. */
 export default function AccountQuickActions({ username, profilePublic, isAdmin, latestChangelog }: { username: string; profilePublic: boolean; isAdmin: boolean; latestChangelog: string | null }) {
   const router = useRouter();
   const t = useT();
   const unseen = useChangelogUnseen(latestChangelog);
-  const chip = "chip !gap-1.5 !px-3 !py-1.5 !text-xs";
+  const chip = "chip shrink-0 whitespace-nowrap !gap-1.5 !px-3 !py-1.5 !text-xs";
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -22,7 +23,7 @@ export default function AccountQuickActions({ username, profilePublic, isAdmin, 
   }
 
   return (
-    <div className="scrollbar-none -mx-4 mt-5 flex gap-2 overflow-x-auto px-4 lg:hidden">
+    <FadeRow className="scrollbar-none -mx-4 mt-5 flex gap-2 overflow-x-auto px-4 lg:hidden">
       <Link href="/changelog" className={chip}>
         <Megaphone className="h-3.5 w-3.5" /> What&apos;s new {unseen && <NewDot />}
       </Link>
@@ -39,6 +40,6 @@ export default function AccountQuickActions({ username, profilePublic, isAdmin, 
       <button onClick={logout} className={`${chip} text-muted`}>
         <LogOut className="h-3.5 w-3.5" /> {t("menu.logout")}
       </button>
-    </div>
+    </FadeRow>
   );
 }

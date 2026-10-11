@@ -13,6 +13,7 @@ import Select from "../Select";
 import TagPicker from "./TagPicker";
 import { usePrefs, useT } from "../PrefsProvider";
 import { useScrollLock } from "../useScrollLock";
+import FadeRow from "../FadeRow";
 
 type Page = { media: MediaCard[]; hasNextPage: boolean };
 type Preset = { id: string; name: string; query: string };
@@ -120,7 +121,7 @@ export default function BrowseView({ params, initial, error, presets: initialPre
       </aside>
 
       <div className="min-w-0">
-        <div className="scrollbar-none -mx-4 mb-5 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">
+        <FadeRow className="scrollbar-none -mx-4 mb-5 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">
           {VIBES.map((v) => {
             const on = browseQuery(v.params as BrowseParams) === currentQuery;
             return (
@@ -134,7 +135,7 @@ export default function BrowseView({ params, initial, error, presets: initialPre
               </button>
             );
           })}
-        </div>
+        </FadeRow>
 
         <div className="flex flex-wrap gap-2">
           <SearchInput value={params.q ?? ""} onSearch={(q) => apply({ q: q || undefined })} pending={pending} placeholder={t("browse.search")} />
