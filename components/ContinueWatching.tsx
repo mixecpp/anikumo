@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Play } from "lucide-react";
+import SectionHeading from "./SectionHeading";
 
 export type ContinueItem = {
   anilistId: number;
@@ -8,50 +10,41 @@ export type ContinueItem = {
   progressSeconds: number;
   durationSeconds: number;
   completed: boolean;
+  nextEpisode?: number | null;
 };
 
 export default function ContinueWatching({ items }: { items: ContinueItem[] }) {
   if (!items.length) return null;
   return (
-    <section className="mt-10">
-      <div className="mb-4 flex items-end justify-between px-4 md:px-8">
-        <h2 className="font-[family-name:var(--font-display)] text-xl font-bold md:text-2xl">Continue watching</h2>
-        <Link href="/profile" className="text-sm text-muted transition hover:text-accent">
-          History →
-        </Link>
-      </div>
-      <div className="scrollbar-none flex gap-4 overflow-x-auto px-4 pb-2 md:px-8">
-        {items.map((it) => {
-          const nextEp = it.completed ? it.episode + 1 : it.episode;
-          const pct = it.completed ? 100 : it.durationSeconds ? (it.progressSeconds / it.durationSeconds) * 100 : 0;
+    <section>
+      <SectionHeading title="Continue watching" href="/account/history" hrefLabel="History" />
+      <div className="grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-3">
+        {items.slice(0, 6).map((it) => {
+          const nextEp = it.completed ? it.nextEpisode ?? it.episode + 1 : it.episode;
+          const pct = it.completed ? 0 : it.durationSeconds ? (it.progressSeconds / it.durationSeconds) * 100 : 0;
           return (
-            <Link
-              key={it.anilistId}
-              href={`/watch/${it.anilistId}/${nextEp}`}
-              className="group flex w-[300px] shrink-0 gap-3 rounded-xl border border-line bg-surface p-2.5 transition hover:border-accent/60"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={it.coverImage} alt="" className="h-24 w-16 rounded-lg object-cover" />
-              <div className="flex min-w-0 flex-1 flex-col justify-between py-1">
-                <div>
-                  <div className="line-clamp-2 text-sm font-medium group-hover:text-accent-2">{it.title}</div>
-                  <div className="mt-1 text-xs text-muted">
-                    {it.completed ? `Up next: Episode ${nextEp}` : `Episode ${it.episode} · ${fmt(it.progressSeconds)} in`}
+            <Link key={it.anilistId} href={`/watch/${it.anilistId}/${nextEp}`} className="group block min-w-0">
+              <div className="relative aspect-video overflow-hidden rounded-xl bg-white/[0.04] ring-1 ring-inset ring-white/[0.06]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={it.coverImage} alt="" className="h-full w-full object-cover object-[center_25%] transition duration-500 group-hover:scale-[1.04]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                <span className="absolute inset-0 grid place-items-center opacity-0 transition duration-300 group-hover:opacity-100">
+                  <span className="grid h-11 w-11 scale-90 place-items-center rounded-full bg-white text-bg transition duration-300 group-hover:scale-100">
+                    <Play className="ml-0.5 h-4 w-4 fill-current" />
+                  </span>
+                </span>
+                <span className="absolute bottom-2.5 left-3 font-mono text-[11px] text-fg/90">{it.completed ? `NEXT · EP ${nextEp}` : `EP ${it.episode}`}</span>
+                {pct > 0 && (
+                  <div className="absolute inset-x-0 bottom-0 h-[3px] bg-white/15">
+                    <div className="h-full bg-accent" style={{ width: `${Math.min(100, pct)}%` }} />
                   </div>
-                </div>
-                <div className="h-1 overflow-hidden rounded-full bg-white/10">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, pct)}%` }} />
-                </div>
+                )}
               </div>
+              <div className="mt-2 truncate text-sm text-fg/90">{it.title}</div>
             </Link>
           );
         })}
       </div>
     </section>
   );
-}
-
-function fmt(s: number) {
-  const m = Math.floor(s / 60);
-  return `${m}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 }

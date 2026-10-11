@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { scanLibrary } from "@/lib/library";
-import { fail, requireUserId } from "@/lib/http";
+import { fail } from "@/lib/http";
+import { requireAdmin } from "@/lib/auth";
 
 export async function POST() {
-  if (!(await requireUserId())) return fail("Log in to scan the library", 401);
+  if (!(await requireAdmin())) return fail("Only admins can scan the library", 403);
   const report = await scanLibrary();
   return NextResponse.json(report, { status: report.error ? 400 : 200 });
 }

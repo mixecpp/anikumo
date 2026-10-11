@@ -30,8 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files: .env (dev defaults) is committed on purpose. Production secrets live on the
+# server in /etc/anikumo/anikumo.env, which overrides it. Never commit .env.local / .env.production.
 .env*
+!.env
 
 # vercel
 .vercel
@@ -44,3 +46,6 @@ next-env.d.ts
 /prisma/*.db
 /prisma/*.db-journal
 !.env.example
+
+/backups
+/deploy/*.local

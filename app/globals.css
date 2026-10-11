@@ -1,14 +1,65 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #09090d;
-  --surface: #12121a;
-  --surface-2: #1a1a25;
-  --border: #262634;
-  --text: #ededf2;
-  --muted: #9b9bb0;
-  --accent: #f43f5e;
-  --accent-2: #fb7185;
+  --ov: 255 255 255;
+  --bg: #0e0e0f;
+  --panel: #151516;
+  --menu: rgb(16 16 18 / 0.86);
+  --surface: rgb(var(--ov) / 0.035);
+  --surface-2: rgb(var(--ov) / 0.06);
+  --border: rgb(var(--ov) / 0.07);
+  --text: #ececee;
+  --muted: #85858d;
+  --btn-bg: #fafafa;
+  --btn-fg: #0a0a0b;
+  --btn-hover: #d9d9de;
+  --accent: #f6a57c;
+  --accent-2: color-mix(in oklab, var(--accent) 62%, white);
+  --success: #3ecf8e;
+  --star: #fbbf24;
+  --violet: #a78bfa;
+  --cyan: #67e8f9;
+  --grad: var(--accent);
+  --shadow: rgb(0 0 0 / 0.7);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Light theme: flipping the overlay channel (and Tailwind's white) inverts every subtle tint at once. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ov: 0 0 0;
+  --color-white: #000;
+  --bg: #f7f7f8;
+  --panel: #ffffff;
+  --menu: rgb(255 255 255 / 0.92);
+  --text: #18181b;
+  --muted: #6b6b76;
+  --btn-bg: #18181b;
+  --btn-fg: #fafafa;
+  --btn-hover: #3f3f46;
+  --accent-2: color-mix(in oklab, var(--accent) 70%, black);
+  --success: #16a34a;
+  --star: #d97706;
+  --shadow: rgb(0 0 0 / 0.12);
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    color-scheme: light;
+    --ov: 0 0 0;
+    --color-white: #000;
+    --bg: #f7f7f8;
+    --panel: #ffffff;
+    --menu: rgb(255 255 255 / 0.92);
+    --text: #18181b;
+    --muted: #6b6b76;
+    --btn-bg: #18181b;
+    --btn-fg: #fafafa;
+    --btn-hover: #3f3f46;
+    --accent-2: color-mix(in oklab, var(--accent) 70%, black);
+    --success: #16a34a;
+    --star: #d97706;
+    --shadow: rgb(0 0 0 / 0.12);
+  }
 }
 
 @theme inline {
@@ -20,25 +71,198 @@
   --color-muted: var(--muted);
   --color-accent: var(--accent);
   --color-accent-2: var(--accent-2);
+  --color-violet: var(--violet);
+  --color-cyan: var(--cyan);
+  --color-panel: var(--panel);
+  --color-success: var(--success);
+  --color-star: var(--star);
   --font-sans: var(--font-geist-sans);
-  --font-display: var(--font-display);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-geist-sans);
 }
 
 html {
   color-scheme: dark;
 }
 
+:root[data-theme="light"] body,
+:root[data-theme="light"] html { color-scheme: light; }
+
 body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  letter-spacing: -0.006em;
 }
 
 ::selection {
-  background: var(--accent);
-  color: white;
+  background: color-mix(in oklab, var(--accent) 40%, transparent);
 }
+
+:focus-visible {
+  outline: 2px solid rgb(var(--ov) / 0.6);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Component classes live in a layer so Tailwind utilities (hidden, sm:inline-flex, w-full…) can override them. */
+@layer components {
+/* ───────── Surfaces ───────── */
+
+.glass,
+.panel {
+  background: var(--panel);
+  border: 1px solid rgb(var(--ov) / 0.06);
+}
+
+/* Small uppercase monospace caption, e.g. "PROGRESS", "RECOMMENDED". */
+.label {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.glass-strong {
+  background: var(--menu);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgb(var(--ov) / 0.08);
+  box-shadow: 0 16px 40px -12px var(--shadow);
+}
+
+.glass-soft {
+  background: rgb(var(--ov) / 0.025);
+}
+
+.lift {
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.lift:hover {
+  background: rgb(var(--ov) / 0.06);
+  border-color: rgb(var(--ov) / 0.12);
+}
+
+.gradient-text {
+  color: var(--accent);
+}
+
+/* ───────── Buttons ───────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 10px;
+  padding: 0.55rem 1rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  user-select: none;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    opacity 0.15s,
+    transform 0.1s;
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.btn-primary {
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+}
+.btn-primary:hover {
+  background: var(--btn-hover);
+}
+.btn-ghost {
+  background: rgb(var(--ov) / 0.06);
+  border: 1px solid rgb(var(--ov) / 0.06);
+  color: var(--text);
+}
+.btn-ghost:hover {
+  background: rgb(var(--ov) / 0.1);
+}
+.btn-icon {
+  padding: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.press {
+  transition: transform 0.1s;
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+/* ───────── Inputs / chips ───────── */
+
+.input {
+  width: 100%;
+  background: rgb(var(--ov) / 0.04);
+  border: 1px solid rgb(var(--ov) / 0.08);
+  border-radius: 10px;
+  padding: 0.6rem 0.85rem;
+  color: var(--text);
+  outline: none;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.input::placeholder {
+  color: #6b6b73;
+}
+.input:hover {
+  border-color: rgb(var(--ov) / 0.12);
+}
+.input:focus {
+  border-color: rgb(var(--ov) / 0.28);
+  background: rgb(var(--ov) / 0.06);
+}
+select.input option {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 6px;
+  padding: 0.2rem 0.55rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgb(var(--ov) / 0.06);
+  border: 1px solid rgb(var(--ov) / 0.05);
+  color: rgba(236, 236, 238, 0.85);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+a.chip:hover,
+button.chip:hover {
+  background: rgb(var(--ov) / 0.1);
+  color: var(--text);
+}
+
+}
+
+/* ───────── Utilities ───────── */
 
 .scrollbar-none {
   scrollbar-width: none;
@@ -46,10 +270,9 @@ body {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
-
 .thin-scroll {
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: rgb(var(--ov) / 0.12) transparent;
 }
 
 .line-clamp-2 {
@@ -65,62 +288,8 @@ body {
   overflow: hidden;
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 0.6rem;
-  padding: 0.6rem 1.1rem;
-  font-weight: 600;
-  font-size: 0.9rem;
-  transition: background 0.15s, transform 0.1s, opacity 0.15s;
-}
-.btn:active {
-  transform: scale(0.97);
-}
-.btn:disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-.btn-primary {
-  background: var(--accent);
-  color: white;
-}
-.btn-primary:hover {
-  background: var(--accent-2);
-}
-.btn-ghost {
-  background: color-mix(in srgb, white 8%, transparent);
-  color: var(--text);
-}
-.btn-ghost:hover {
-  background: color-mix(in srgb, white 14%, transparent);
-}
-
-.input {
-  width: 100%;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 0.6rem;
-  padding: 0.65rem 0.85rem;
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.15s;
-}
-.input:focus {
-  border-color: var(--accent);
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0.2rem 0.65rem;
-  font-size: 0.75rem;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--muted);
+.mask-fade-x {
+  mask-image: linear-gradient(90deg, #000 92%, transparent);
 }
 
 @keyframes fade-in {
@@ -134,7 +303,10 @@ body {
   }
 }
 .fade-in {
-  animation: fade-in 0.35s ease both;
+  animation: fade-in 0.35s var(--ease-out) both;
+}
+.pop-in {
+  animation: fade-in 0.3s var(--ease-out) both;
 }
 
 @keyframes shimmer {
@@ -143,7 +315,64 @@ body {
   }
 }
 .skeleton {
-  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
+  background: linear-gradient(90deg, rgb(var(--ov) / 0.03) 25%, rgb(var(--ov) / 0.07) 50%, rgb(var(--ov) / 0.03) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.4s linear infinite;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@keyframes heart-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.heart-pop {
+  animation: heart-pop 0.35s var(--ease-out);
+}
+
+@keyframes auth-scroll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes eq {
+  from {
+    transform: scaleY(0.35);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* loading spinners still need to read as "working" */
+  .spin {
+    animation-duration: 0.8s !important;
+    animation-iteration-count: infinite !important;
+  }
 }

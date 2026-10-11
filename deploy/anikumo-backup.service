@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up the AniKumo database
+
+[Service]
+Type=oneshot
+User=anikumo
+Group=anikumo
+EnvironmentFile=/etc/anikumo/anikumo.env
+WorkingDirectory=/opt/anikumo/current
+ExecStart=/usr/local/bin/node scripts/db-backup.mjs

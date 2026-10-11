@@ -9,15 +9,345 @@ datasource db {
 
 model User {
   id           String   @id @default(cuid())
-  email        String   @unique
   username     String   @unique
   passwordHash String
   avatarColor  String   @default("#e11d48")
   createdAt    DateTime @default(now())
 
-  progress  WatchProgress[]
-  favorites Favorite[]
-  comments  Comment[]
+  bio             String    @default("")
+  isAdmin         Boolean   @default(false)
+  profilePublic   Boolean   @default(false)
+  totpSecret      String?
+  totpEnabled     Boolean   @default(false)
+  recoveryCodes   String    @default("[]")
+  // sha256 of the account recovery key (used to reset a forgotten password without email)
+  recoveryKeyHash String?
+  bannedAt        DateTime?
+  banReason       String    @default("")
+  calendarToken   String?   @unique
+  discordWebhook  String?
+  // UI preferences as JSON: titleLang, theme, accent, locale, hideEcchi, blurEcchi, shortcuts
+  preferences     String    @default("{}")
+
+  progress         WatchProgress[]
+  favorites        Favorite[]
+  comments         Comment[]
+  playbackSettings PlaybackSettings?
+  sessions         Session[]
+  listEntries      ListEntry[]
+  notifications    Notification[]
+  following        Follow[]         @relation("Following")
+  followers        Follow[]         @relation("Followers")
+  commentLikes     CommentLike[]
+  reactions        EpisodeReaction[]
+  reviews          Review[]
+  reviewVotes      ReviewVote[]
+  pollVotes        PollVote[]
+  customLists      CustomList[]
+  goals            WatchGoal[]
+  presets          BrowsePreset[]
+  reports          Report[]         @relation("Reporter")
+  changelog        ChangelogEntry[]
+  adminLogs        AdminLog[]
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  userAgent  String    @default("")
+  ip         String    @default("")
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ListEntry {
+  id                  String    @id @default(cuid())
+  userId              String
+  anilistId           Int
+  status              String // WATCHING | PLANNING | COMPLETED | DROPPED | PAUSED
+  score               Float?
+  progress            Int       @default(0)
+  notes               String    @default("")
+  tags                String    @default("[]")
+  pinned              Boolean   @default(false)
+  hiddenFromContinue  Boolean   @default(false)
+  rewatching          Boolean   @default(false)
+  rewatchCount        Int       @default(0)
+  rewatchEpisode      Int       @default(0)
+  lastNotifiedEpisode Int       @default(0)
+  startedAt           DateTime?
+  completedAt         DateTime?
+  title               String
+  coverImage          String
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, anilistId])
+  @@index([userId, status])
+  @@index([anilistId])
+}
+
+model MediaSnapshot {
+  anilistId    Int      @id
+  title        String
+  titleRomaji  String?
+  titleNative  String?
+  coverImage   String
+  bannerImage  String?
+  format       String?
+  status       String?
+  episodes     Int?
+  duration     Int?
+  genres       String   @default("[]")
+  studios      String   @default("[]")
+  tags         String   @default("[]")
+  season       String?
+  seasonYear   Int?
+  averageScore Int?
+  isAdult      Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String // episode | reply | follow | system
+  title     String
+  body      String    @default("")
+  href      String    @default("")
+  image     String    @default("")
+  key       String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, createdAt])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+model CommentLike {
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@id([userId, commentId])
+  @@index([commentId])
+}
+
+model EpisodeReaction {
+  userId    String
+  anilistId Int
+  episode   Int
+  emoji     String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, anilistId, episode, emoji])
+  @@index([anilistId, episode])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  anilistId Int
+  score     Int
+  body      String
+  title     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  votes ReviewVote[]
+
+  @@unique([userId, anilistId])
+  @@index([anilistId, createdAt])
+}
+
+model ReviewVote {
+  userId    String
+  reviewId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@id([userId, reviewId])
+}
+
+model Poll {
+  id         String    @id @default(cuid())
+  title      String
+  season     String?
+  seasonYear Int?
+  // JSON array of { anilistId, title, cover }
+  options    String
+  closesAt   DateTime?
+  createdAt  DateTime  @default(now())
+
+  votes PollVote[]
+
+  @@unique([season, seasonYear])
+}
+
+model PollVote {
+  pollId    String
+  userId    String
+  anilistId Int
+  createdAt DateTime @default(now())
+
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([pollId, userId])
+}
+
+model CustomList {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String   @default("")
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CustomListItem[]
+
+  @@index([userId])
+}
+
+model CustomListItem {
+  id         String   @id @default(cuid())
+  listId     String
+  anilistId  Int
+  title      String
+  coverImage String
+  note       String   @default("")
+  position   Int      @default(0)
+  addedAt    DateTime @default(now())
+
+  list CustomList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, anilistId])
+}
+
+model WatchGoal {
+  id        String   @id @default(cuid())
+  userId    String
+  metric    String // episodes | shows | hours
+  period    String // week | month
+  target    Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, metric, period])
+}
+
+model BrowsePreset {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  query     String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Report {
+  id           String    @id @default(cuid())
+  reporterId   String
+  targetType   String // comment | review
+  targetId     String
+  reason       String
+  status       String    @default("open") // open | resolved | dismissed
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+
+  reporter User @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([status, createdAt])
+}
+
+// Active viewing time: seconds credited only while playback advances in step with real time.
+model WatchTime {
+  userId    String
+  anilistId Int
+  episode   Int
+  day       String // YYYY-MM-DD (server local time)
+  seconds   Float    @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, anilistId, episode, day])
+  @@index([userId, day])
+  @@index([day])
+}
+
+// Last accepted playback sample per episode, used to measure the next sample's delta.
+model WatchCursor {
+  userId    String
+  anilistId Int
+  episode   Int
+  position  Float
+  sampledAt Float
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, anilistId, episode])
+}
+
+model ErrorLog {
+  id        String   @id @default(cuid())
+  source    String // server | client
+  message   String
+  stack     String   @default("")
+  digest    String   @default("")
+  path      String   @default("")
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model PlaybackSettings {
+  userId         String @id
+  audioTrack     String @default("sub")
+  autoSkipIntro  Boolean @default(false)
+  autoSkipOutro  Boolean @default(false)
+  autoplayNext   Boolean @default(true)
+  autoplay       Boolean @default(false)
+  resume         Boolean @default(true)
+  volume         Float @default(1)
+  muted          Boolean @default(false)
+  updatedAt      DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model WatchProgress {
@@ -28,6 +358,7 @@ model WatchProgress {
   progressSeconds Float    @default(0)
   durationSeconds Float    @default(0)
   completed       Boolean  @default(false)
+  sampledAt       Float    @default(0)
   // Snapshot of display info so "Continue Watching" renders without hitting AniList
   title           String
   coverImage      String
@@ -59,10 +390,16 @@ model Comment {
   episode   Int?
   body      String
   createdAt DateTime @default(now())
+  parentId  String?
+  editedAt  DateTime?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  Comment?      @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[]     @relation("Replies")
+  likes   CommentLike[]
 
   @@index([anilistId, episode, createdAt])
+  @@index([parentId])
 }
 
 model LibrarySeries {
@@ -89,4 +426,32 @@ model LibraryEpisode {
   series LibrarySeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
 
   @@unique([seriesId, episode])
+}
+
+model ChangelogEntry {
+  id        String   @id @default(cuid())
+  title     String
+  body      String   @default("")
+  // new | improved | fixed
+  tag       String   @default("new")
+  version   String   @default("")
+  authorId  String?
+  createdAt DateTime @default(now())
+
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
+
+model AdminLog {
+  id        String   @id @default(cuid())
+  adminId   String?
+  action    String
+  target    String   @default("")
+  detail    String   @default("")
+  createdAt DateTime @default(now())
+
+  admin User? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
 }

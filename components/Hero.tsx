@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { Info, Play, Star } from "lucide-react";
 
 export type HeroItem = {
   id: number;
@@ -10,73 +12,103 @@ export type HeroItem = {
   cover: string;
   description: string;
   meta: string[];
+  score: number | null;
   color: string | null;
 };
 
+const DURATION = 8000;
+
 export default function Hero({ items }: { items: HeroItem[] }) {
   const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    if (items.length < 2) return;
-    const t = setInterval(() => setI((x) => (x + 1) % items.length), 8000);
-    return () => clearInterval(t);
-  }, [items.length, i]);
+    if (items.length < 2 || paused) return;
+    const t = setTimeout(() => setI((x) => (x + 1) % items.length), DURATION);
+    return () => clearTimeout(t);
+  }, [items.length, i, paused]);
 
   if (!items.length) return null;
   const cur = items[i];
 
   return (
-    <section className="relative h-[62vh] min-h-[420px] w-full overflow-hidden">
-      {items.map((it, idx) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={it.id}
-          src={it.banner}
+    <section
+      className="relative -mt-16 h-[72vh] min-h-[520px] w-full overflow-hidden"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <AnimatePresence initial={false}>
+        <motion.img
+          key={cur.id}
+          src={cur.banner}
           alt=""
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${idx === i ? "opacity-100" : "opacity-0"}`}
+          initial={{ opacity: 0, scale: 1.03 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute inset-0 h-full w-full object-cover"
         />
-      ))}
-      <div className="absolute inset-0 bg-gradient-to-r from-bg via-bg/80 to-bg/10" />
+      </AnimatePresence>
+      <div className="absolute inset-0 bg-gradient-to-r from-bg via-bg/75 to-bg/10" />
       <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/60 to-transparent" />
 
-      <div key={cur.id} className="fade-in relative mx-auto flex h-full max-w-[1500px] items-end gap-8 px-4 pb-16 md:px-8">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={cur.cover} alt="" className="hidden aspect-[2/3] w-44 rounded-xl object-cover shadow-2xl shadow-black/70 md:block" />
-        <div className="max-w-2xl">
-          <div className="mb-3 text-sm font-semibold uppercase tracking-widest" style={{ color: cur.color ?? "var(--accent)" }}>
-            #{i + 1} Trending
-          </div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold leading-tight md:text-5xl">{cur.title}</h1>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {cur.meta.map((m) => (
-              <span key={m} className="chip !bg-white/10 !text-fg">
-                {m}
-              </span>
-            ))}
-          </div>
-          <p className="mt-4 line-clamp-3 text-sm text-muted md:text-base">{cur.description}</p>
-          <div className="mt-6 flex gap-3">
-            <Link href={`/watch/${cur.id}/1`} className="btn btn-primary">
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-              Watch now
-            </Link>
-            <Link href={`/anime/${cur.id}`} className="btn btn-ghost">
-              Details
-            </Link>
-          </div>
-        </div>
+      <div className="relative mx-auto flex h-full max-w-[1400px] items-end px-4 pb-20 md:px-8">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={cur.id}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="max-w-xl"
+          >
+            <div className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted">Trending · {i + 1}</div>
+            <h1 className="text-4xl font-semibold leading-[1.05] tracking-tight md:text-6xl">{cur.title}</h1>
+            <div className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-fg/70">
+              {cur.score && (
+                <span className="flex items-center gap-1 text-fg">
+                  <Star className="h-3.5 w-3.5 fill-current" />
+                  {cur.score.toFixed(1)}
+                </span>
+              )}
+              {cur.meta.map((m) => (
+                <span key={m} className="flex items-center gap-2.5 before:h-1 before:w-1 before:rounded-full before:bg-white/30 first:before:hidden">
+                  {m}
+                </span>
+              ))}
+            </div>
+            <p className="mt-4 line-clamp-2 max-w-lg text-[15px] leading-relaxed text-fg/60">{cur.description}</p>
+            <div className="mt-7 flex gap-2.5">
+              <Link href={`/watch/${cur.id}/1`} className="btn btn-primary !px-5 !py-2.5">
+                <Play className="h-4 w-4 fill-current" />
+                Play
+              </Link>
+              <Link href={`/anime/${cur.id}`} className="btn btn-ghost !px-5 !py-2.5 backdrop-blur-md">
+                <Info className="h-4 w-4" />
+                More info
+              </Link>
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      <div className="absolute bottom-6 right-4 flex gap-1.5 md:right-8">
+      <div className="absolute bottom-8 left-1/2 flex w-full max-w-[1400px] -translate-x-1/2 gap-1.5 px-4 md:px-8">
         {items.map((it, idx) => (
-          <button
-            key={it.id}
-            onClick={() => setI(idx)}
-            aria-label={`Show ${it.title}`}
-            className={`h-1.5 rounded-full transition-all ${idx === i ? "w-8 bg-accent" : "w-3 bg-white/30 hover:bg-white/60"}`}
-          />
+          <button key={it.id} onClick={() => setI(idx)} aria-label={`Show ${it.title}`} className="group h-6 w-10 py-2.5">
+            <span className="block h-[3px] overflow-hidden rounded-full bg-white/20 transition group-hover:bg-white/35">
+              {idx === i && (
+                <motion.span
+                  key={`${it.id}-${paused}`}
+                  className="block h-full bg-white"
+                  initial={{ width: paused ? "100%" : "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: paused ? 0 : DURATION / 1000, ease: "linear" }}
+                />
+              )}
+              {idx < i && <span className="block h-full w-full bg-white/60" />}
+            </span>
+          </button>
         ))}
       </div>
     </section>

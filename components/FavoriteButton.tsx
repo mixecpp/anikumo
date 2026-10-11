@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Heart } from "lucide-react";
+import { toast } from "@/lib/toast";
 
 export default function FavoriteButton({
   anilistId,
@@ -19,26 +21,36 @@ export default function FavoriteButton({
   const router = useRouter();
   const [fav, setFav] = useState(initial);
   const [busy, setBusy] = useState(false);
+  const [pop, setPop] = useState(0);
 
   async function toggle() {
-    if (!loggedIn) return router.push("/login");
+    if (!loggedIn) {
+      toast("Log in to save favorites", "info");
+      return router.push(`/login?next=/anime/${anilistId}`);
+    }
     setBusy(true);
-    setFav((f) => !f);
+    const optimistic = !fav;
+    setFav(optimistic);
+    if (optimistic) setPop((p) => p + 1);
     const res = await fetch("/api/favorites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ anilistId, title, coverImage }),
     });
-    if (res.ok) setFav((await res.json()).favorited);
-    else setFav((f) => !f);
+    if (res.ok) {
+      const { favorited } = await res.json();
+      setFav(favorited);
+      toast(favorited ? "Added to favorites" : "Removed from favorites", favorited ? "success" : "info");
+    } else {
+      setFav(!optimistic);
+      toast("Couldn't update favorites", "error");
+    }
     setBusy(false);
   }
 
   return (
-    <button onClick={toggle} disabled={busy} className={`btn ${fav ? "btn-ghost !text-accent" : "btn-ghost"}`}>
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill={fav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-        <path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z" />
-      </svg>
+    <button onClick={toggle} disabled={busy} aria-pressed={fav} className="btn btn-ghost">
+      <Heart key={pop} className={`h-4 w-4 transition-colors ${fav ? "heart-pop fill-accent text-accent" : ""}`} />
       {fav ? "Favorited" : "Favorite"}
     </button>
   );

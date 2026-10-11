@@ -1,246 +1,148 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import VideoPlayer, { type Skip } from "./VideoPlayer";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { playbackUrl, type PlaybackSource } from "@/lib/playback/source";
+import type { PlaybackSettings as Settings } from "@/lib/playback/settings";
+import PlaybackBar from "./watch/PlaybackBar";
+import { usePlaybackSettings } from "./usePlaybackSettings";
+import { useWatchProgress } from "./useWatchProgress";
+import { useEmbeddedPlayer } from "./useEmbeddedPlayer";
 
-type Source = {
-  provider: string;
-  label: string;
-  kind: "video" | "youtube" | "external";
-  url: string;
-  subtitles?: { label: string; lang: string; url: string }[];
-  thumbnail?: string;
-  note?: string;
-};
-type ProviderResult = { id: string; name: string; sources: Source[]; error?: string };
-
+type Skip = { type: "op" | "ed"; start: number; end: number };
 type Props = {
-  anilistId: number;
-  episode: number;
-  idMal: number | null;
-  title: string;
-  coverImage: string;
-  resumeAt: number;
-  completed: boolean;
-  hasNext: boolean;
-  hasPrev: boolean;
-  loggedIn: boolean;
+  anilistId: number; episode: number; idMal: number | null; title: string; coverImage: string;
+  resumeAt: number; completed: boolean; hasNext: boolean; hasPrev: boolean; nextEpisode: number | null;
+  userId: string | null; embedsEnabled: boolean; source: PlaybackSource; initialSettings: Settings;
 };
 
 export default function WatchClient(p: Props) {
+  return <EpisodeWatch key={`${p.userId}:${p.anilistId}:${p.episode}`} {...p} />;
+}
+
+function EpisodeWatch(p: Props) {
   const router = useRouter();
-  const [providers, setProviders] = useState<ProviderResult[] | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  const frame = useRef<HTMLIFrameElement>(null);
+  const wrap = useRef<HTMLDivElement>(null);
+  const preferences = usePlaybackSettings(p.initialSettings, p.userId);
+  const { settings } = preferences;
+  const [source, setSource] = useState(p.source);
+  const [playerUrl, setPlayerUrl] = useState(() => playbackUrl(p.source, p.initialSettings, p.completed ? 0 : p.resumeAt));
   const [skips, setSkips] = useState<Skip[]>([]);
-  const [watched, setWatched] = useState(p.completed);
+  const [nextIn, setNextIn] = useState<number | null>(null);
+  const [initializing, setInitializing] = useState(true);
+  const audioRef = useRef(p.initialSettings.audioTrack);
+  const [resumeAt, setResumeAt] = useState(p.completed ? 0 : p.resumeAt);
+  const progress = useWatchProgress({ userId: p.userId, anilistId: p.anilistId, episode: p.episode, title: p.title, coverImage: p.coverImage, completed: p.completed });
+  const latestProgress = progress.latest;
+  const saveProgress = progress.save;
+  const endedRef = useRef(false);
+  const onEnded = () => {
+    if (endedRef.current) return;
+    endedRef.current = true;
+    if (p.userId) void progress.markWatched();
+    if (settings.autoplayNext && p.nextEpisode) setNextIn(5);
+  };
+  const player = useEmbeddedPlayer(frame, wrap, source, playerUrl, settings, resumeAt, skips, {
+    sample: progress.sample, pause: () => { void progress.save(); }, ended: onEnded,
+  });
+
+  // Guest audio preferences load after hydration; account preferences are already in initial HTML.
+  useEffect(() => {
+    if (audioRef.current === settings.audioTrack) return;
+    audioRef.current = settings.audioTrack;
+    const position = latestProgress.current?.progressSeconds ?? (p.completed ? 0 : p.resumeAt);
+    setResumeAt(position);
+    setPlayerUrl(playbackUrl(source, settings, position));
+    endedRef.current = false;
+  }, [settings, source, p.completed, p.resumeAt, latestProgress]);
 
   useEffect(() => {
-    let alive = true;
-    setProviders(null);
-    setSelected(null);
-    fetch(`/api/sources?id=${p.anilistId}&ep=${p.episode}`)
-      .then((r) => r.json())
-      .then((j) => alive && setProviders(j.providers ?? []))
-      .catch(() => alive && setProviders([]));
-    if (p.idMal) {
-      fetch(`/api/skip?malId=${p.idMal}&ep=${p.episode}`)
-        .then((r) => r.json())
-        .then((j) => alive && setSkips(j.skips ?? []))
-        .catch(() => {});
-    }
-    return () => {
-      alive = false;
-    };
-  }, [p.anilistId, p.episode, p.idMal]);
-
-  const all = useMemo(() => providers?.flatMap((pr) => pr.sources) ?? [], [providers]);
-  const playable = all.filter((s) => s.kind !== "external");
-  const external = all.filter((s) => s.kind === "external");
+    setInitializing(true);
+    const timer = setTimeout(() => setInitializing(false), 25000);
+    return () => clearTimeout(timer);
+  }, [playerUrl]);
 
   useEffect(() => {
-    if (!selected && playable.length) setSelected(playable[0].url);
-  }, [playable, selected]);
+    if (!p.idMal) return;
+    const controller = new AbortController();
+    fetch(`/api/skip?malId=${p.idMal}&ep=${p.episode}`, { signal: controller.signal })
+      .then((r) => r.json()).then((j) => { if (!controller.signal.aborted) setSkips(j.skips ?? []); }).catch(() => {});
+    return () => controller.abort();
+  }, [p.idMal, p.episode]);
 
-  const current = playable.find((s) => s.url === selected) ?? null;
+  useEffect(() => {
+    if (nextIn === null) return;
+    if (!settings.autoplayNext) { setNextIn(null); return; }
+    if (nextIn === 0) { void saveProgress(true); router.push(`/watch/${p.anilistId}/${p.nextEpisode}`); return; }
+    const timer = setTimeout(() => setNextIn(nextIn - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [nextIn, p.anilistId, p.nextEpisode, router, saveProgress, settings.autoplayNext]);
 
-  const meta = useRef({ title: p.title, coverImage: p.coverImage, anilistId: p.anilistId, episode: p.episode, loggedIn: p.loggedIn });
-  meta.current = { title: p.title, coverImage: p.coverImage, anilistId: p.anilistId, episode: p.episode, loggedIn: p.loggedIn };
-
-  const save = useCallback((progressSeconds: number, durationSeconds: number, opts: { final?: boolean; completed?: boolean } = {}) => {
-    const m = meta.current;
-    if (!m.loggedIn) return;
-    const body = JSON.stringify({
-      anilistId: m.anilistId,
-      episode: m.episode,
-      progressSeconds,
-      durationSeconds,
-      title: m.title,
-      coverImage: m.coverImage,
-      completed: opts.completed,
-    });
-    if (opts.final && navigator.sendBeacon) {
-      navigator.sendBeacon("/api/progress", new Blob([body], { type: "application/json" }));
-    } else {
-      fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true })
-        .then((r) => r.json())
-        .then((j) => j.completed && setWatched(true))
-        .catch(() => {});
-    }
+  const command = player.command;
+  const toggle = useCallback(() => command(player.playing ? "pause" : "play"), [command, player.playing]);
+  const seek = useCallback((seconds: number) => command("seek", Math.max(0, Math.min(player.duration, seconds))), [command, player.duration]);
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await wrap.current?.requestFullscreen();
+    } catch {}
   }, []);
 
-  const onProgress = useCallback((c: number, d: number, final?: boolean) => save(c, d, { final }), [save]);
-  const onEnded = useCallback(() => {
-    save(1, 1, { completed: true });
-    setWatched(true);
-  }, [save]);
-  const goNext = useCallback(() => router.push(`/watch/${p.anilistId}/${p.episode + 1}`), [router, p.anilistId, p.episode]);
-
   useEffect(() => {
-    if (current?.kind === "youtube") save(0, 0);
-  }, [current?.kind, current?.url, save]);
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || target?.isContentEditable || target?.closest('[role="dialog"]') || ["INPUT", "TEXTAREA", "SELECT", "BUTTON", "A"].includes(target?.tagName)) return;
+      if (!source.controls || !player.connected) return;
+      if (e.key === " " || e.key.toLowerCase() === "k") { e.preventDefault(); toggle(); }
+      else if (["ArrowLeft", "j", "ArrowRight", "l"].includes(e.key)) {
+        e.preventDefault(); seek(player.time + (["ArrowLeft", "j"].includes(e.key) ? -10 : 10));
+      } else if (e.key.toLowerCase() === "f") {
+        e.preventDefault(); void toggleFullscreen();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [source.controls, player.connected, player.time, seek, toggle, toggleFullscreen]);
 
-  function markWatched() {
-    save(1, 1, { completed: true });
-    setWatched(true);
+  function useStandardEmbed() {
+    void progress.save();
+    const fallback: PlaybackSource = { url: source.fallbackUrl, fallbackUrl: source.fallbackUrl, protocol: "aniweeb", controls: false };
+    setSource(fallback); setPlayerUrl(playbackUrl(fallback, settings, 0));
+  }
+
+  function retryPlayer() {
+    const position = progress.latest.current?.progressSeconds ?? resumeAt;
+    void progress.save();
+    setResumeAt(position);
+    const url = new URL(playbackUrl(source, settings, position));
+    url.searchParams.set("reload", String(Date.now()));
+    setPlayerUrl(url.href);
   }
 
   return (
     <div>
-      {providers === null ? (
-        <div className="skeleton aspect-video w-full rounded-2xl" />
-      ) : current?.kind === "video" ? (
-        <VideoPlayer
-          key={current.url}
-          src={current.url}
-          subtitles={current.subtitles ?? []}
-          resumeAt={p.completed ? 0 : p.resumeAt}
-          skips={skips}
-          hasNext={p.hasNext}
-          onProgress={onProgress}
-          onEnded={onEnded}
-          onNext={goNext}
-        />
-      ) : current?.kind === "youtube" ? (
-        <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black">
-          <iframe
-            key={current.url}
-            src={current.url}
-            title={current.note ?? "Episode"}
-            className="h-full w-full"
-            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-            allowFullScreen
-          />
+      {p.embedsEnabled ? (
+        <div ref={wrap} className="aspect-video w-full overflow-hidden rounded-2xl bg-black">
+          <iframe ref={frame} key={playerUrl} src={playerUrl} title={`${p.title} - Episode ${p.episode}`} width="100%" height="480" frameBorder="0" className="h-full w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />
         </div>
-      ) : (
-        <NoSource external={external} episode={p.episode} providers={providers} />
-      )}
-
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {p.hasPrev && (
-          <Link href={`/watch/${p.anilistId}/${p.episode - 1}`} className="btn btn-ghost !py-2">
-            ← Ep {p.episode - 1}
-          </Link>
-        )}
-        {p.hasNext && (
-          <Link href={`/watch/${p.anilistId}/${p.episode + 1}`} className="btn btn-ghost !py-2">
-            Ep {p.episode + 1} →
-          </Link>
-        )}
-        {p.loggedIn && (
-          <button onClick={markWatched} disabled={watched} className="btn btn-ghost !py-2">
-            {watched ? "✓ Watched" : "Mark as watched"}
-          </button>
-        )}
-        {!p.loggedIn && (
-          <span className="text-sm text-muted">
-            <Link href="/login" className="text-accent hover:underline">
-              Log in
-            </Link>{" "}
-            to save your progress
-          </span>
-        )}
-      </div>
-
-      {playable.length > 0 && (
-        <div className="mt-5 rounded-2xl border border-line bg-surface p-4">
-          <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Sources</div>
-          <div className="flex flex-wrap gap-2">
-            {playable.map((s) => (
-              <button
-                key={s.url}
-                onClick={() => setSelected(s.url)}
-                title={s.note}
-                className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
-                  s.url === selected ? "border-accent bg-accent/15 text-fg" : "border-line bg-surface-2 text-muted hover:text-fg"
-                }`}
-              >
-                <div className="font-medium">{s.label}</div>
-                {s.note && <div className="max-w-[260px] truncate text-xs text-muted">{s.note}</div>}
-              </button>
-            ))}
-          </div>
-          {external.length > 0 && <ExternalLinks external={external} />}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ExternalLinks({ external }: { external: Source[] }) {
-  return (
-    <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
-      {external.map((s) => (
-        <a
-          key={s.url}
-          href={s.url}
-          target="_blank"
-          rel="noreferrer"
-          className="rounded-lg bg-surface-2 px-3 py-2 text-sm transition hover:bg-white/10"
-          title={s.note}
-        >
-          {s.label} ↗
-        </a>
-      ))}
-    </div>
-  );
-}
-
-function NoSource({ external, episode, providers }: { external: Source[]; episode: number; providers: ProviderResult[] }) {
-  const errors = providers.filter((p) => p.error);
-  const hasYoutube = providers.some((p) => p.id === "youtube");
-  return (
-    <div className="grid aspect-video w-full place-items-center rounded-2xl border border-line bg-surface p-6">
-      <div className="max-w-lg text-center">
-        <div className="font-[family-name:var(--font-display)] text-2xl font-bold">No in-site source for episode {episode}</div>
-        {external.length > 0 ? (
-          <>
-            <p className="mt-2 text-sm text-muted">It&apos;s available officially here:</p>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              {external.map((s) => (
-                <a key={s.url} href={s.url} target="_blank" rel="noreferrer" className="btn btn-primary !py-2" title={s.note}>
-                  {s.label} ↗
-                </a>
-              ))}
-            </div>
-          </>
-        ) : (
-          <p className="mt-2 text-sm text-muted">No official streaming links were found either.</p>
-        )}
-        <p className="mt-5 text-xs text-muted">
-          Add the episode to your{" "}
-          <Link href="/library" className="text-accent hover:underline">
-            library
-          </Link>
-          {hasYoutube ? "" : ", or set YOUTUBE_API_KEY in .env to find official free uploads"}.
-        </p>
-        {errors.map((e) => (
-          <p key={e.id} className="mt-1 text-xs text-accent/80">
-            {e.name}: {e.error}
-          </p>
-        ))}
-      </div>
+      ) : <div className="grid aspect-video w-full place-items-center rounded-2xl border border-line bg-surface p-6"><p className="text-sm text-muted">Playback is currently disabled.</p></div>}
+      <PlaybackBar
+        anilistId={p.anilistId}
+        enabled={p.embedsEnabled}
+        controls={source.controls}
+        problem={p.embedsEnabled && source.controls && ((!initializing && !player.connected) || player.playerError)}
+        loggedIn={!!p.userId}
+        watched={progress.watched}
+        progressStatus={progress.saved}
+        settings={settings}
+        settingsStatus={preferences.status}
+        updateSettings={preferences.update}
+        onReload={retryPlayer}
+        onUseStandard={source.controls ? useStandardEmbed : undefined}
+        onToggleWatched={() => { void progress.toggleWatched(); }}
+        onRetrySave={() => { void progress.save(); }}
+      />
     </div>
   );
 }

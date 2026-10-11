@@ -1,84 +1,51 @@
-import Link from "next/link";
 import type { Metadata } from "next";
-import AnimeCard from "@/components/AnimeCard";
-import ErrorNotice from "@/components/ErrorNotice";
-import BrowseFilters from "@/components/BrowseFilters";
 import { browse } from "@/lib/anilist";
+import { parseBrowseParams, SEASONS, VIBES, browseQuery } from "@/lib/browse-params";
+import { getUserId } from "@/lib/auth";
+import { getPrefs } from "@/lib/prefs";
+import { prisma } from "@/lib/db";
+import { translator } from "@/lib/i18n";
+import BrowseView from "@/components/browse/BrowseView";
 
-export const metadata: Metadata = { title: "Browse" };
+export const metadata: Metadata = { title: "Browse", description: "Filter anime by genre, tags, length, score, season and more." };
 
-type SP = Record<string, string | undefined>;
-
-function seasonNow() {
-  const m = new Date().getMonth();
-  return { season: m < 3 ? "WINTER" : m < 6 ? "SPRING" : m < 9 ? "SUMMER" : "FALL", year: new Date().getFullYear() };
-}
+type SP = Record<string, string | string[] | undefined>;
 
 export default async function BrowsePage({ searchParams }: { searchParams: Promise<SP> }) {
-  const sp = await searchParams;
-  let season = sp.season;
-  let year = sp.year ? Number(sp.year) : undefined;
-  if (season === "current") {
-    const now = seasonNow();
-    season = now.season;
-    year = now.year;
-  }
-  const page = Math.max(1, Number(sp.page) || 1);
+  const params = parseBrowseParams(await searchParams);
+  const [prefs, userId] = await Promise.all([getPrefs(), getUserId()]);
+  const hideEcchi = prefs.hideEcchi && !params.genres?.includes("Ecchi");
+  const query = { ...params, page: 1, excludeGenres: hideEcchi ? [...new Set([...(params.excludeGenres ?? []), "Ecchi"])] : params.excludeGenres };
 
-  const data = await browse({
-    q: sp.q,
-    genre: sp.genre,
-    year,
-    season,
-    format: sp.format,
-    status: sp.status,
-    sort: sp.sort,
-    page,
-  }).catch((e: Error) => e);
+  const [result, presets] = await Promise.all([
+    browse(query).then(
+      (data) => ({ data, error: undefined }),
+      (e: Error) => ({ data: null, error: e.message }),
+    ),
+    userId ? prisma.browsePreset.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, query: true } }) : [],
+  ]);
 
-  if (data instanceof Error) return <ErrorNotice message={data.message} />;
-
-  const pageHref = (p: number) => {
-    const next = new URLSearchParams(Object.entries(sp).filter(([, v]) => v) as [string, string][]);
-    next.set("page", String(p));
-    return `/browse?${next}`;
-  };
+  const t = translator(prefs.locale);
+  const vibe = VIBES.find((v) => browseQuery(v.params as typeof params) === browseQuery(params));
+  const seasonLabel = SEASONS.find(([k]) => k === params.season)?.[1];
+  const heading = params.q
+    ? `Results for “${params.q}”`
+    : vibe
+      ? vibe.label
+      : params.maxPopularity
+        ? "Hidden gems"
+        : params.genres?.length === 1 && !params.season
+          ? params.genres[0]
+          : seasonLabel && params.year
+            ? `${seasonLabel} ${params.year}`
+            : t("browse.title");
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 pt-8 md:px-8">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold">
-        {sp.q ? (
-          <>
-            Results for <span className="text-accent">&ldquo;{sp.q}&rdquo;</span>
-          </>
-        ) : (
-          "Browse"
-        )}
-      </h1>
-      <BrowseFilters current={{ ...sp, season, year: year ? String(year) : undefined }} />
-
-      {data.Page.media.length === 0 ? (
-        <p className="mt-16 text-center text-muted">Nothing matched those filters.</p>
-      ) : (
-        <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {data.Page.media.map((m) => (
-            <AnimeCard key={m.id} m={m} />
-          ))}
-        </div>
-      )}
-
-      <div className="mt-12 flex items-center justify-center gap-3">
-        {page > 1 && (
-          <Link href={pageHref(page - 1)} className="btn btn-ghost">
-            ← Previous
-          </Link>
-        )}
-        <span className="text-sm text-muted">Page {page}</span>
-        {data.Page.pageInfo.hasNextPage && (
-          <Link href={pageHref(page + 1)} className="btn btn-ghost">
-            Next →
-          </Link>
-        )}
+    <div className="mx-auto max-w-[1400px] px-4 pt-10 md:px-8">
+      <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">{heading}</h1>
+      {vibe && <p className="mt-1.5 text-sm text-muted">{vibe.hint}</p>}
+      <div className="mt-8">
+        <BrowseView params={params} initial={result.data} error={result.error} presets={presets} hiddenEcchi={hideEcchi && !!prefs.hideEcchi} />
       </div>
     </div>
   );

@@ -30,6 +30,17 @@ function matchesEpisode(title: string, ep: number, single: boolean) {
   return re.test(title);
 }
 
+async function search(q: string, key: string) {
+  return cached(`yt:${q.toLowerCase()}`, 60 * 60 * 12, async () => {
+    const url = new URL("https://www.googleapis.com/youtube/v3/search");
+    url.search = new URLSearchParams({ part: "snippet", type: "video", maxResults: "25", q, key }).toString();
+    const res = await fetch(url, { cache: "no-store" });
+    if (res.status === 403) throw new Error("YouTube API quota reached or key invalid");
+    if (!res.ok) throw new Error(`YouTube API ${res.status}`);
+    return ((await res.json()) as { items: YtItem[] }).items;
+  });
+}
+
 export const youtubeProvider: Provider = {
   id: "youtube",
   name: "Official YouTube",
@@ -38,23 +49,7 @@ export const youtubeProvider: Provider = {
     const key = process.env.YOUTUBE_API_KEY!.trim();
     const single = totalEpisodes === 1;
     const title = titles[0];
-    const q = single ? `${title} full movie` : `${title} episode ${episode}`;
-
-    const items = await cached(`yt:${q.toLowerCase()}`, 60 * 60 * 6, async () => {
-      const url = new URL("https://www.googleapis.com/youtube/v3/search");
-      url.search = new URLSearchParams({
-        part: "snippet",
-        type: "video",
-        videoDuration: "medium",
-        maxResults: "25",
-        q,
-        key,
-      }).toString();
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) throw new Error(`YouTube API ${res.status}`);
-      const json = (await res.json()) as { items: YtItem[] };
-      return json.items;
-    });
+    const items = await search(single ? `${title} full movie` : `${title} episode ${episode}`, key);
 
     const titleWords = titles
       .flatMap((t) => t.toLowerCase().split(/[^a-z0-9]+/))
@@ -72,11 +67,13 @@ export const youtubeProvider: Provider = {
       .slice(0, 3)
       .map((it) => ({
         provider: "youtube",
-        label: `${it.snippet.channelTitle} · YouTube`,
+        label: it.snippet.channelTitle,
         kind: "youtube" as const,
-        url: `https://www.youtube-nocookie.com/embed/${it.id.videoId}?autoplay=1&rel=0`,
+        videoId: it.id.videoId,
+        url: `https://www.youtube.com/watch?v=${it.id.videoId}`,
         thumbnail: it.snippet.thumbnails.medium?.url,
         note: decode(it.snippet.title),
+        badge: "Official · Free",
       }));
   },
 };

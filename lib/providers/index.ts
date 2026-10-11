@@ -1,10 +1,8 @@
-import { localProvider } from "./local";
-import { youtubeProvider } from "./youtube";
-import { officialProvider } from "./official";
+import { remoteEmbedProvider } from "./remote-embeds";
 import type { Provider, Source, SourceQuery } from "./types";
 
-// Order = priority. Add new providers here; each implements the Provider interface in ./types.
-export const providers: Provider[] = [localProvider, youtubeProvider, officialProvider];
+// Order = priority. Each implements the Provider interface in ./types.
+export const providers: Provider[] = [remoteEmbedProvider];
 
 export type ProviderResult = { id: string; name: string; sources: Source[]; error?: string };
 
@@ -20,6 +18,10 @@ export async function resolveSources(q: SourceQuery): Promise<ProviderResult[]> 
         }
       }),
   );
+}
+
+export function sourceSetup() {
+  return { embeds: remoteEmbedProvider.enabled(), library: false };
 }
 
 export type { Source, SourceQuery } from "./types";

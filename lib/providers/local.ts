@@ -13,7 +13,9 @@ export const localProvider: Provider = {
     });
     return eps.map((e) => ({
       provider: "local",
-      label: `My Library · ${e.series.folderName}`,
+      label: "My Library",
+      note: e.series.folderName,
+      badge: "Local file",
       kind: "video" as const,
       url: `/api/library/stream/${e.id}`,
       subtitles: e.subtitlePath ? [{ label: "Subtitles", lang: "en", url: `/api/library/subs/${e.id}` }] : [],

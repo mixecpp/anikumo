@@ -1,0 +1,41 @@
+[Unit]
+Description=AniKumo website (Next.js)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=anikumo
+Group=anikumo
+WorkingDirectory=/opt/anikumo/current
+EnvironmentFile=/etc/anikumo/anikumo.env
+ExecStart=/usr/local/bin/node /opt/anikumo/current/node_modules/next/dist/bin/next start -p 3100 -H 127.0.0.1
+Restart=always
+RestartSec=3
+TimeoutStopSec=20
+
+# Sandboxing: the app can only write its database and its build cache, and only listens on localhost.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/anikumo /opt/anikumo/releases
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

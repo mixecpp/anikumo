@@ -1,38 +1,42 @@
 import Link from "next/link";
-import { getUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { getUser, isAdminUser } from "@/lib/auth";
+import { navLinks } from "@/lib/nav";
+import { syncEpisodeAlerts, unreadCount } from "@/lib/notifications";
 import SearchBox from "./SearchBox";
 import UserMenu from "./UserMenu";
+import NavLinks from "./NavLinks";
+import NavShell from "./NavShell";
+import NotificationBell from "./NotificationBell";
+import Logo from "./Logo";
 
-const LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/browse", label: "Browse" },
-  { href: "/schedule", label: "Schedule" },
-  { href: "/library", label: "Library" },
-];
-
-export default async function Navbar() {
-  const user = await getUser();
+export default async function Navbar({ libraryEnabled }: { libraryEnabled: boolean }) {
+  const [user, latest] = await Promise.all([getUser(), prisma.changelogEntry.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } })]);
+  let unread = 0;
+  let profilePublic = false;
+  if (user) {
+    // Episode alerts are checked in the background (throttled to every 10 minutes per user).
+    syncEpisodeAlerts(user.id).catch(() => {});
+    const [count, row] = await Promise.all([unreadCount(user.id), prisma.user.findUnique({ where: { id: user.id }, select: { profilePublic: true, isAdmin: true, username: true } })]);
+    unread = count;
+    profilePublic = !!row?.profilePublic;
+  }
   return (
-    <header className="sticky top-0 z-40 border-b border-line/60 bg-bg/80 backdrop-blur-xl">
-      <nav className="mx-auto flex h-16 max-w-[1500px] items-center gap-4 px-4 md:gap-8 md:px-8">
-        <Link href="/" className="flex shrink-0 items-center gap-2 font-[family-name:var(--font-display)] text-xl font-extrabold tracking-tight">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-sm text-white">A</span>
-          <span className="hidden sm:inline">
-            Anime<span className="text-accent">Web</span>
-          </span>
+    <NavShell>
+      <nav aria-label="Main" className="mx-auto flex h-16 max-w-[1400px] items-center gap-4 px-4 md:gap-6 md:px-8">
+        <Link href="/" aria-label="AniKumo home" className="shrink-0">
+          <Logo />
         </Link>
-        <div className="hidden items-center gap-1 lg:flex">
-          {LINKS.map((l) => (
-            <Link key={l.href} href={l.href} className="rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-fg">
-              {l.label}
-            </Link>
-          ))}
-        </div>
+        <NavLinks links={navLinks(libraryEnabled)} />
         <div className="flex flex-1 justify-end">
           <SearchBox />
         </div>
-        <UserMenu user={user ? { username: user.username, avatarColor: user.avatarColor } : null} links={LINKS} />
+        {user && <NotificationBell initialUnread={unread} />}
+        <UserMenu
+          latestChangelog={latest?.createdAt.toISOString() ?? null}
+          user={user ? { username: user.username, avatarColor: user.avatarColor, isAdmin: isAdminUser(user), profilePublic } : null}
+        />
       </nav>
-    </header>
+    </NavShell>
   );
 }

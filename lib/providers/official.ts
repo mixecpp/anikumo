@@ -16,11 +16,12 @@ export const officialProvider: Provider = {
       if (episodeFromTitle(se.title) === episode) {
         out.push({
           provider: "official",
-          label: `Watch on ${se.site}`,
+          label: se.site,
           kind: "external",
           url: se.url,
           thumbnail: se.thumbnail,
           note: se.title,
+          badge: "This episode",
         });
       }
     }
@@ -28,10 +29,10 @@ export const officialProvider: Provider = {
     const seen = new Set(out.map((s) => s.label));
     for (const link of externalLinks) {
       if (link.type !== "STREAMING") continue;
-      const label = `Watch on ${link.site}`;
+      const label = link.site;
       if (seen.has(label)) continue;
       seen.add(label);
-      out.push({ provider: "official", label, kind: "external", url: link.url, note: "Series page" });
+      out.push({ provider: "official", label, kind: "external", url: link.url, badge: "Series page" });
     }
     return out;
   },
