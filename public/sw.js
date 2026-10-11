@@ -1,6 +1,6 @@
 // AniKumo service worker: app-shell caching with network-first pages, so the site
 // opens instantly and recently visited pages (incl. your account pages) work offline.
-const VERSION = "ak-v2";
+const VERSION = "ak-v3";
 const STATIC = `${VERSION}-static`;
 const PAGES = `${VERSION}-pages`;
 const OFFLINE_URL = "/offline";
