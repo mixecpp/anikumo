@@ -14,7 +14,8 @@ import ServiceWorker from "@/components/ServiceWorker";
 import { PrefsProvider } from "@/components/PrefsProvider";
 import { libraryRoot } from "@/lib/library";
 import { getPrefs } from "@/lib/prefs";
-import { getUserId } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { translator } from "@/lib/i18n";
 import { appUrl } from "@/lib/url";
 
@@ -49,7 +50,12 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const libraryEnabled = !!libraryRoot();
-  const [prefs, userId] = await Promise.all([getPrefs(), getUserId()]);
+  const [prefs, user, latest] = await Promise.all([
+    getPrefs(),
+    getUser(),
+    prisma.changelogEntry.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } }).catch(() => null),
+  ]);
+  const userId = user?.id ?? null;
   const t = translator(prefs.locale);
 
   return (
@@ -88,7 +94,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </span>
               </div>
             </footer>
-            <MobileNav libraryEnabled={libraryEnabled} />
+            <MobileNav
+              libraryEnabled={libraryEnabled}
+              user={user ? { username: user.username, avatarColor: user.avatarColor, avatar: user.avatar } : null}
+              latestChangelog={latest?.createdAt.toISOString() ?? null}
+            />
             <ScrollTop />
             <Toaster />
             <Shortcuts />

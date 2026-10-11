@@ -32,10 +32,12 @@ export default async function Navbar({ libraryEnabled }: { libraryEnabled: boole
           <SearchBox />
         </div>
         {user && <NotificationBell initialUnread={unread} />}
+        <div className="hidden lg:block">
         <UserMenu
           latestChangelog={latest?.createdAt.toISOString() ?? null}
           user={user ? { username: user.username, avatarColor: user.avatarColor, avatar: user.avatar, isAdmin: isAdminUser(user), profilePublic } : null}
         />
+        </div>
       </nav>
     </NavShell>
   );

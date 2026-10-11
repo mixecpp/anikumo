@@ -9,6 +9,43 @@ import { clearRecent, readRecent, type RecentItem } from "@/lib/recent";
 import type { SearchGroup, SearchItem } from "@/app/api/search/route";
 import { Avatar } from "./UserMenu";
 
+const PHONE = "(max-width: 767px)";
+
+/** On phones the results fill the screen below the search bar, down to the top of the keyboard. */
+function usePhoneSheet(open: boolean, anchor: React.RefObject<HTMLElement | null>) {
+  const [phone, setPhone] = useState(false);
+  const [box, setBox] = useState<{ top: number; height: number } | null>(null);
+  useEffect(() => {
+    const mq = window.matchMedia(PHONE);
+    const update = () => setPhone(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (!open || !phone) return;
+    const vv = window.visualViewport;
+    const measure = () => {
+      const bottom = anchor.current?.getBoundingClientRect().bottom ?? 64;
+      // End above the keyboard or the bottom nav, whichever is higher.
+      const navTop = document.querySelector('nav[aria-label="Primary"]')?.getBoundingClientRect().top ?? Infinity;
+      const visible = Math.min(vv ? vv.height + vv.offsetTop : window.innerHeight, navTop);
+      const top = Math.round(bottom + 8);
+      setBox({ top, height: Math.max(160, Math.round(visible - top)) });
+    };
+    measure();
+    vv?.addEventListener("resize", measure);
+    vv?.addEventListener("scroll", measure);
+    window.addEventListener("resize", measure);
+    return () => {
+      vv?.removeEventListener("resize", measure);
+      vv?.removeEventListener("scroll", measure);
+      window.removeEventListener("resize", measure);
+    };
+  }, [open, phone, anchor]);
+  return { phone, box };
+}
+
 function recentGroup(recent: RecentItem[]): SearchGroup[] {
   if (!recent.length) return [];
   return [{ kind: "anime", label: "Recently viewed", items: recent.map((r) => ({ kind: "anime", href: `/anime/${r.id}`, title: r.title, subtitle: "", image: r.cover })) }];
@@ -43,6 +80,8 @@ export default function SearchBox() {
   const inputRef = useRef<HTMLInputElement>(null);
   const searching = q.trim().length >= 2;
   const shown = searching ? groups : recentGroup(recent);
+  const showPanel = open && (searching || recent.length > 0);
+  const { phone, box } = usePhoneSheet(open, boxRef);
   const flat = shown.flatMap((g) => g.items);
 
   useEffect(() => {
@@ -94,7 +133,6 @@ export default function SearchBox() {
     router.push(path);
   }
 
-  const showPanel = open && (searching || recent.length > 0);
   const optionId = (i: number) => `${listId}-opt-${i}`;
   let index = -1;
 
@@ -148,15 +186,20 @@ export default function SearchBox() {
         <span className="absolute right-2.5 top-1/2 flex -translate-y-1/2 items-center">
           {loading ? (
             <LoaderCircle className="spin h-4 w-4 text-muted" />
-          ) : q ? (
+          ) : q || (phone && open) ? (
             <button
               type="button"
               onClick={() => {
+                if (!q) {
+                  setOpen(false);
+                  inputRef.current?.blur();
+                  return;
+                }
                 setQ("");
                 inputRef.current?.focus();
               }}
               className="press rounded p-0.5 text-muted hover:text-fg"
-              aria-label="Clear search"
+              aria-label={q ? "Clear search" : "Close search"}
             >
               <X className="h-4 w-4" />
             </button>
@@ -173,7 +216,14 @@ export default function SearchBox() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="glass-strong absolute right-0 mt-2 max-h-[min(70dvh,560px)] w-full min-w-[min(320px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain rounded-xl p-1"
+            className={
+              phone
+                ? "fixed inset-x-0 z-50 overflow-y-auto overscroll-contain border-t border-white/[0.06] bg-bg px-2 pb-3 pt-1"
+                : "glass-strong absolute right-0 mt-2 max-h-[min(70dvh,560px)] w-full min-w-[320px] overflow-y-auto overscroll-contain rounded-xl p-1"
+            }
+            style={phone && box ? { top: box.top, height: box.height } : undefined}
+            // Scrolling the results on a phone tucks the keyboard away so more of them fit.
+            onTouchMove={phone ? () => inputRef.current?.blur() : undefined}
           >
             <div id={listId} role="listbox" aria-label="Search results">
               {searching && loading && !groups.length && (
@@ -214,7 +264,7 @@ export default function SearchBox() {
                         href={item.href}
                         onClick={() => setOpen(false)}
                         onMouseEnter={() => setActive(i)}
-                        className={`flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors ${active === i ? "bg-white/[0.08]" : ""}`}
+                        className={`flex items-center gap-3 rounded-lg px-2 transition-colors ${phone ? "py-2.5" : "py-1.5"} ${active === i ? "bg-white/[0.08]" : ""}`}
                       >
                         <Thumb item={item} />
                         <div className="min-w-0 flex-1">
