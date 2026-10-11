@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
+
 import { Crown, Eye } from "lucide-react";
 import { getLeaderboard, type LeaderPeriod } from "@/lib/leaderboard";
 import { getUserId } from "@/lib/auth";
@@ -7,7 +9,7 @@ import { prisma } from "@/lib/db";
 import { formatDuration } from "@/lib/watchtime";
 import { Avatar } from "@/components/UserMenu";
 
-export const metadata: Metadata = { title: "Leaderboard", description: "Who's watched the most anime — measured by real, active watch time." };
+export const metadata: Metadata = pageMeta({ title: "Leaderboard", description: "Who's watched the most anime on AniKumo, measured by real, active watch time.", path: "/leaderboard" });
 export const dynamic = "force-dynamic";
 
 const PERIODS: [LeaderPeriod, string][] = [
@@ -60,7 +62,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
                   <span className="absolute inset-y-0 left-0 bg-white/[0.03]" style={{ width: `${(r.seconds / top) * 100}%` }} aria-hidden />
                   <span className={`relative w-7 text-right font-mono text-sm tabular-nums ${r.rank <= 3 ? "text-accent" : "text-muted"}`}>{r.rank === 1 ? <Crown className="ml-auto h-4 w-4" /> : r.rank}</span>
                   <span className="relative">
-                    <Avatar name={r.username} color={r.avatarColor} size={32} />
+                    <Avatar name={r.username} color={r.avatarColor} avatar={r.avatar} size={32} />
                   </span>
                   <span className="relative min-w-0 flex-1 truncate text-sm font-medium group-hover:underline">{r.username}</span>
                   <span className="relative hidden w-24 text-right font-mono text-xs text-muted sm:block">{r.episodes} eps</span>

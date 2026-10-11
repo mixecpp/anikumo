@@ -1,11 +1,13 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { PRIVATE } from "@/lib/seo";
+
 import AuthForm from "@/components/AuthForm";
 import { getUserId } from "@/lib/auth";
 import { authCovers } from "@/lib/auth-covers";
 
-export const metadata: Metadata = { title: "Log in" };
+export const metadata: Metadata = { title: "Log in", ...PRIVATE };
 
 export default async function LoginPage() {
   if (await getUserId()) redirect("/");

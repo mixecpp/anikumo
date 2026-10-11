@@ -5,9 +5,10 @@ import { checkUsername, destroySession, getSession, revokeSessions } from "@/lib
 import { fail, readJson } from "@/lib/http";
 import { isDiscordWebhook } from "@/lib/notifications";
 import { encrypt } from "@/lib/crypto";
+import { deleteAvatarFile } from "@/lib/uploads";
 
 type Body = {
-  avatarColor: string;
+  avatarColor: string; avatar: string;
   username: string;
   bio: string;
   profilePublic: boolean;
@@ -58,7 +59,7 @@ export async function PATCH(req: Request) {
   const updated = await prisma.user.update({
     where: { id: userId },
     data,
-    select: { username: true, avatarColor: true, bio: true, profilePublic: true },
+    select: { username: true, avatarColor: true, avatar: true, bio: true, profilePublic: true },
   });
   if (body.newPassword !== undefined) revoked = await revokeSessions(userId, session.sid);
   return NextResponse.json({ ok: true, user: updated, revokedSessions: revoked });
@@ -73,6 +74,7 @@ export async function DELETE(req: Request) {
     return fail("Password is incorrect", 401);
   }
   await destroySession();
+  await deleteAvatarFile(user.avatar);
   await prisma.$transaction([
     prisma.watchTime.deleteMany({ where: { userId: session.userId } }),
     prisma.watchCursor.deleteMany({ where: { userId: session.userId } }),

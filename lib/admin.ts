@@ -4,6 +4,7 @@ import { prisma } from "./db";
 import { cached } from "./cache";
 import { getMediaBatch, titleOf } from "./anilist";
 import { localDay } from "./watchtime";
+import { dbFile } from "./uploads";
 
 /** Records an admin action for the audit log. Never throws. */
 export async function logAdmin(adminId: string, action: string, target = "", detail = "") {
@@ -93,13 +94,6 @@ export async function getAdminMetrics() {
     series: days.map((day) => ({ day, signups: signupCount.get(day) ?? 0, watchHours: (watchSeconds.get(day) ?? 0) / 3600, activeViewers: activeCount.get(day) ?? 0 })),
     totals: { users, listEntries, comments, reviews, customLists, openReports, errors24h, banned },
   };
-}
-
-function dbFile() {
-  const url = process.env.DATABASE_URL ?? "";
-  if (!url.startsWith("file:")) return null;
-  const rel = url.slice(5);
-  return path.isAbsolute(rel) ? rel : path.join(process.cwd(), "prisma", rel);
 }
 
 /** Server health and configuration checks for the System tab. */

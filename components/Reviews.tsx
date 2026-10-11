@@ -12,7 +12,7 @@ import ReportButton from "./ReportButton";
 import ScorePicker from "./list/ScorePicker";
 import { usePrefs } from "./PrefsProvider";
 
-type R = { id: string; score: number; title: string; body: string; createdAt: string; helpful: number; voted: boolean; user: { id: string; username: string; avatarColor: string; profilePublic: boolean } };
+type R = { id: string; score: number; title: string; body: string; createdAt: string; helpful: number; voted: boolean; user: { id: string; username: string; avatarColor: string; avatar: string; profilePublic: boolean } };
 
 export default function Reviews({ anilistId }: { anilistId: number }) {
   const { loggedIn } = usePrefs();
@@ -114,7 +114,7 @@ export default function Reviews({ anilistId }: { anilistId: number }) {
             return (
               <li key={r.id} className="panel rounded-2xl p-4">
                 <div className="flex items-center gap-3">
-                  <Avatar name={r.user.username} color={r.user.avatarColor} size={30} />
+                  <Avatar name={r.user.username} color={r.user.avatarColor} avatar={r.user.avatar} size={30} />
                   <div className="min-w-0 flex-1">
                     {r.user.profilePublic ? (
                       <Link href={`/u/${r.user.username}`} className="text-sm font-medium hover:underline">{r.user.username}</Link>

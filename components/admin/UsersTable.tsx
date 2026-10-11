@@ -11,7 +11,7 @@ import ConfirmButton from "../account/ConfirmButton";
 type Row = {
   id: string;
   username: string;
-  avatarColor: string;
+  avatarColor: string; avatar: string;
   createdAt: string;
   isAdmin: boolean;
   bannedAt: string | null;
@@ -92,7 +92,7 @@ export default function UsersTable({ meId }: { meId: string }) {
             {data.users.map((u) => (
               <li key={u.id}>
                 <button onClick={() => setOpen(open === u.id ? null : u.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.02]" aria-expanded={open === u.id}>
-                  <Avatar name={u.username} color={u.avatarColor} size={30} />
+                  <Avatar name={u.username} color={u.avatarColor} avatar={u.avatar} size={30} />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2 text-sm">
                       <span className="truncate font-medium">{u.username}</span>
@@ -162,6 +162,11 @@ function UserActions({ user, self, onChange }: { user: Row; self: boolean; onCha
             <Link href={`/u/${user.username}`} className="btn btn-ghost !py-1.5 !text-xs">
               View profile
             </Link>
+          )}
+          {user.avatar && (
+            <button onClick={() => run({ action: "removeAvatar" }, "Picture removed")} className="btn btn-ghost !py-1.5 !text-xs">
+              Remove picture
+            </button>
           )}
           <button onClick={() => run({ action: "signOut" }, `Signed ${user.username} out everywhere`)} className="btn btn-ghost !py-1.5 !text-xs">
             Sign out everywhere

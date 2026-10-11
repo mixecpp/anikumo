@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { JsonLd, breadcrumbs, excerpt, isoDate, pageMeta } from "@/lib/seo";
 import { ArrowUpRight, Play, Star } from "lucide-react";
 import { getMedia, prettyEnum, stripHtml, titleOf } from "@/lib/anilist";
 import { getUserId } from "@/lib/auth";
@@ -30,11 +31,48 @@ import ActivityGrid from "@/components/account/ActivityGrid";
 import { Avatar } from "@/components/UserMenu";
 import { STATUS_DOT, STATUS_LABEL, isStatus } from "@/lib/list-shared";
 
+import { appUrl } from "@/lib/url";
+
 type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const m = await getMedia(Number((await params).id)).catch(() => null);
-  return { title: m ? titleOf(m) : "Anime" };
+  const id = Number((await params).id);
+  const m = await getMedia(id).catch(() => null);
+  if (!m) return { title: "Anime" };
+  const name = titleOf(m);
+  const kind = m.format === "MOVIE" ? "movie" : "anime";
+  const facts = [prettyEnum(m.format), m.seasonYear, m.episodes ? `${m.episodes} episodes` : null, m.studios.nodes[0]?.name].filter(Boolean).join(" · ");
+  const synopsis = excerpt(m.description, 150 - facts.length);
+  return pageMeta({
+    title: m.seasonYear ? `${name} (${m.seasonYear})` : name,
+    description: `${facts}. ${synopsis || `Episodes, characters, reviews and where to watch ${name}.`}`.slice(0, 200),
+    path: `/anime/${id}`,
+    type: kind === "movie" ? "video.movie" : "video.tv_show",
+    keywords: [name, m.title.romaji, m.title.english, ...m.genres, `${name} ${kind}`, `${name} episodes`].filter((k): k is string => !!k),
+  });
+}
+
+/** schema.org TVSeries/Movie. Ratings only come from AniKumo's own reviews (never AniList's score). */
+function animeJsonLd(m: NonNullable<Awaited<ReturnType<typeof getMedia>>>, rating: { avg: number | null; count: number }) {
+  const name = titleOf(m);
+  const movie = m.format === "MOVIE";
+  const alternate = [...new Set([m.title.english, m.title.romaji, m.title.native, ...m.synonyms].filter((t): t is string => !!t && t !== name))].slice(0, 6);
+  return {
+    "@context": "https://schema.org",
+    "@type": movie ? "Movie" : "TVSeries",
+    name,
+    alternateName: alternate.length ? alternate : undefined,
+    url: appUrl(`/anime/${m.id}`),
+    image: m.coverImage.extraLarge,
+    description: excerpt(m.description, 500) || undefined,
+    genre: m.genres,
+    inLanguage: "ja",
+    ...(movie ? { datePublished: isoDate(m.startDate), duration: m.duration ? `PT${m.duration}M` : undefined } : { startDate: isoDate(m.startDate), numberOfEpisodes: m.episodes ?? undefined }),
+    productionCompany: m.studios.nodes.map((st) => ({ "@type": "Organization", name: st.name, url: appUrl(`/studio/${st.id}`) })),
+    ...(rating.count > 0 && rating.avg
+      ? { aggregateRating: { "@type": "AggregateRating", ratingValue: Math.round(rating.avg * 10) / 10, bestRating: 10, worstRating: 1, ratingCount: rating.count } }
+      : {}),
+  };
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -60,6 +98,7 @@ export default async function AnimePage({ params }: Props) {
     userId ? dailySeconds(userId, 7 * 12, id) : Promise.resolve(null),
     userId ? episodesPerDay(userId) : Promise.resolve(0),
   ]);
+  const reviewStats = await prisma.review.aggregate({ where: { anilistId: id }, _avg: { score: true }, _count: true });
 
   const episodes = remoteEpisodes.length ? remoteEpisodes : buildEpisodes(m, libraryEps);
   const title = ui.title(m.title);
@@ -98,6 +137,16 @@ export default async function AnimePage({ params }: Props) {
 
   return (
     <div>
+      <JsonLd
+        data={[
+          animeJsonLd(m, { avg: reviewStats._avg.score, count: reviewStats._count }),
+          breadcrumbs([
+            { name: "Home", path: "/" },
+            { name: m.format === "MOVIE" ? "Movies" : "Anime", path: m.format === "MOVIE" ? "/browse?format=MOVIE" : "/browse" },
+            { name: titleOf(m), path: `/anime/${id}` },
+          ]),
+        ]}
+      />
       <SetAmbient images={[m.bannerImage ?? m.coverImage.extraLarge]} />
       <TrackRecent id={id} title={title} cover={m.coverImage.large} />
 
@@ -278,7 +327,7 @@ export default async function AnimePage({ params }: Props) {
                 <div className="mt-3 flex flex-wrap gap-2">
                   {friends.people.map((p) => (
                     <Link key={p.username} href={`/u/${p.username}`} className="flex items-center gap-1.5 rounded-full bg-white/[0.05] py-0.5 pl-0.5 pr-2 text-xs hover:bg-white/[0.1]" title={isStatus(p.status) ? STATUS_LABEL[p.status] : p.status}>
-                      <Avatar name={p.username} color={p.avatarColor} size={20} />
+                      <Avatar name={p.username} color={p.avatarColor} avatar={p.avatar} size={20} />
                       {p.username}
                       {isStatus(p.status) && <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[p.status]}`} />}
                     </Link>

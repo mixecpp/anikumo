@@ -29,6 +29,11 @@ export const metadata: Metadata = {
   openGraph: { type: "website", siteName: "AniKumo" },
   twitter: { card: "summary_large_image" },
   appleWebApp: { capable: true, title: "AniKumo", statusBarStyle: "black-translucent" },
+  keywords: ["anime", "watch anime", "anime tracker", "anime list", "seasonal anime", "anime schedule", "anime reviews"],
+  category: "entertainment",
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
+  // Set in the server env to verify ownership in Google Search Console / Bing Webmaster Tools.
+  verification: { google: process.env.GOOGLE_SITE_VERIFICATION || undefined, other: process.env.BING_SITE_VERIFICATION ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION } : undefined },
 };
 
 export const viewport: Viewport = {

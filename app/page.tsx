@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import Hero, { type HeroItem } from "@/components/Hero";
+import { JsonLd, SITE_DESCRIPTION, SITE_NAME } from "@/lib/seo";
+import { appUrl } from "@/lib/url";
 import ContinueWatching from "@/components/ContinueWatching";
 import ErrorNotice from "@/components/ErrorNotice";
 import GenreStrip from "@/components/GenreStrip";
@@ -22,6 +25,24 @@ async function airingToday(lang: Parameters<typeof pickTitle>[1]): Promise<Airin
   const items = await getSchedule(now - 2 * 3600, now + 24 * 3600).catch(() => []);
   return items.map((s) => ({ id: s.id, anilistId: s.media.id, airingAt: s.airingAt, episode: s.episode, title: pickTitle(s.media.title, lang), cover: s.media.coverImage.large }));
 }
+
+export const metadata: Metadata = {
+  title: { absolute: "AniKumo — Discover, track and watch anime" },
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: "/" },
+};
+
+/** Lets Google show a search box for the site and associate the logo with it. */
+const SITE_JSON_LD = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: appUrl("/"),
+    potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: appUrl("/browse?q={search_term_string}") }, "query-input": "required name=search_term_string" },
+  },
+  { "@context": "https://schema.org", "@type": "Organization", name: SITE_NAME, url: appUrl("/"), logo: appUrl("/pwa-icon") },
+];
 
 export default async function Home() {
   const [userId, ui] = await Promise.all([getUserId(), getUi()]);
@@ -57,6 +78,7 @@ export default async function Home() {
 
   return (
     <div>
+      <JsonLd data={SITE_JSON_LD} />
       <Hero items={hero} />
       <div className="mx-auto max-w-[1400px] space-y-16 px-4 md:px-8">
         <GenreStrip />

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
+
 import { currentSeason, getSeason, shiftSeason } from "@/lib/anilist";
 import { getUi } from "@/lib/server-i18n";
 import ErrorNotice from "@/components/ErrorNotice";
 import TrailerWall from "@/components/TrailerWall";
 
-export const metadata: Metadata = { title: "Trailers", description: "Official trailers for this season and next." };
+export const metadata: Metadata = pageMeta({ title: "New anime trailers", description: "Official trailers and PVs for this season's anime and next season's premieres.", path: "/trailers" });
 
 type SP = Record<string, string | undefined>;
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();

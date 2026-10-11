@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { fail, readJson, requireUserId, toInt } from "@/lib/http";
 import { notify } from "@/lib/notifications";
 
-const USER = { select: { id: true, username: true, avatarColor: true, profilePublic: true } } as const;
+const USER = { select: { id: true, username: true, avatarColor: true, avatar: true, profilePublic: true } } as const;
 
 function shape<T extends { likes: { userId: string }[]; _count: { likes: number } }>(c: T, me: string | null) {
   const { likes, _count, ...rest } = c;

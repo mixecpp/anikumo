@@ -1,17 +1,29 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { JsonLd, excerpt, isoDate, pageMeta } from "@/lib/seo";
 import { Heart } from "lucide-react";
 import { getStaff, prettyEnum, stripHtml } from "@/lib/anilist";
 import { getUi } from "@/lib/server-i18n";
+
+import { appUrl } from "@/lib/url";
 import Synopsis from "@/components/Synopsis";
 import AnimeCard from "@/components/AnimeCard";
 
 type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const s = await getStaff(Number((await params).id)).catch(() => null);
-  return { title: s?.name.full ?? "Staff" };
+  const id = Number((await params).id);
+  const s = await getStaff(id).catch(() => null);
+  if (!s) return { title: "Staff" };
+  const job = s.primaryOccupations.slice(0, 2).join(" & ") || "Staff";
+  return pageMeta({
+    title: `${s.name.full} (${job})`,
+    description: excerpt(s.description, 160) || `${s.name.full}, ${job.toLowerCase()}: roles, characters voiced and anime worked on.`,
+    path: `/staff/${id}`,
+    image: s.image.large,
+    type: "profile",
+  });
 }
 
 export default async function StaffPage({ params }: Props) {
@@ -25,6 +37,20 @@ export default async function StaffPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-[1100px] px-4 pt-10 md:px-8">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Person",
+          name: s.name.full,
+          alternateName: s.name.native ?? undefined,
+          url: appUrl(`/staff/${s.id}`),
+          image: s.image.large,
+          jobTitle: s.primaryOccupations.join(", ") || undefined,
+          birthDate: isoDate(s.dateOfBirth),
+          homeLocation: s.homeTown ? { "@type": "Place", name: s.homeTown } : undefined,
+          description: excerpt(s.description, 400) || undefined,
+        }}
+      />
       <div className="flex flex-col gap-8 sm:flex-row">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={s.image.large} alt={s.name.full} className="w-40 shrink-0 self-start rounded-xl object-cover ring-1 ring-white/10" />

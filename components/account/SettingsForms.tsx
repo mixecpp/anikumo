@@ -9,6 +9,7 @@ import { AlertsCard, ImportCard, KeyboardCard, PreferencesCard, ProfileVisibilit
 import { toast } from "@/lib/toast";
 import { Avatar } from "../UserMenu";
 import ConfirmButton from "./ConfirmButton";
+import AvatarPicker from "./AvatarPicker";
 
 const COLORS = ["#f6a57c", "#fb7185", "#f97316", "#eab308", "#22c55e", "#14b8a6", "#06b6d4", "#3b82f6", "#8b5cf6", "#d946ef", "#71717a"];
 
@@ -27,7 +28,7 @@ const SECTIONS = [
 
 type User = {
   username: string;
-  avatarColor: string;
+  avatarColor: string; avatar: string;
   bio: string;
   profilePublic: boolean;
   discordWebhook: string | null;
@@ -158,6 +159,7 @@ export default function SettingsForms({ user, prefs }: { user: User; prefs: Pref
 
   const [username, setUsername] = useState(user.username);
   const [color, setColor] = useState(user.avatarColor);
+  const [avatar, setAvatar] = useState(user.avatar);
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileDone, markProfileDone] = useDone();
 
@@ -267,7 +269,7 @@ export default function SettingsForms({ user, prefs }: { user: User; prefs: Pref
         <Card
           id="profile"
           title="Profile"
-          description="Your public name and avatar, shown next to your comments."
+          description="Your public name and picture, shown next to your comments and reviews."
           onSubmit={saveProfile}
           footer={
             <>
@@ -287,8 +289,9 @@ export default function SettingsForms({ user, prefs }: { user: User; prefs: Pref
                   maxLength={20}
                 />
               </Field>
+              <AvatarPicker username={username || user.username} color={color} avatar={avatar} onChange={setAvatar} />
               <div>
-                <span className="mb-2 block text-xs font-medium text-muted">Avatar colour</span>
+                <span className="mb-2 block text-xs font-medium text-muted">{avatar ? "Colour (shown if you remove your picture)" : "Avatar colour"}</span>
                 <div className="flex flex-wrap gap-2">
                   {COLORS.map((c) => (
                     <motion.button
@@ -314,7 +317,7 @@ export default function SettingsForms({ user, prefs }: { user: User; prefs: Pref
               <span className="label">Preview</span>
               <div className="mt-3 flex gap-3">
                 <motion.div key={color} initial={{ scale: 0.85 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
-                  <Avatar name={username || user.username} color={color} size={32} />
+                  <Avatar name={username || user.username} color={color} avatar={avatar} size={32} />
                 </motion.div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-sm">

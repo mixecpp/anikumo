@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { prisma } from "@/lib/db";
 import ChangelogList from "@/components/ChangelogList";
 import { MarkChangelogSeen } from "@/components/WhatsNew";
 
-export const metadata: Metadata = { title: "What's new", description: "New features, improvements and fixes on AniKumo." };
+export const metadata: Metadata = pageMeta({ title: "What's new", description: "New features, improvements and fixes on AniKumo.", path: "/changelog" });
 export const dynamic = "force-dynamic";
 
 export default async function ChangelogPage() {

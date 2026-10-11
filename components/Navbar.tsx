@@ -34,7 +34,7 @@ export default async function Navbar({ libraryEnabled }: { libraryEnabled: boole
         {user && <NotificationBell initialUnread={unread} />}
         <UserMenu
           latestChangelog={latest?.createdAt.toISOString() ?? null}
-          user={user ? { username: user.username, avatarColor: user.avatarColor, isAdmin: isAdminUser(user), profilePublic } : null}
+          user={user ? { username: user.username, avatarColor: user.avatarColor, avatar: user.avatar, isAdmin: isAdminUser(user), profilePublic } : null}
         />
       </nav>
     </NavShell>

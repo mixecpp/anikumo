@@ -28,6 +28,7 @@ export async function GET(req: Request) {
         id: true,
         username: true,
         avatarColor: true,
+        avatar: true,
         createdAt: true,
         isAdmin: true,
         bannedAt: true,

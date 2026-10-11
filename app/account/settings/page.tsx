@@ -12,7 +12,7 @@ export default async function SettingsPage() {
   const [u, prefs] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { username: true, avatarColor: true, bio: true, profilePublic: true, discordWebhook: true, calendarToken: true, totpEnabled: true, recoveryKeyHash: true },
+      select: { username: true, avatarColor: true, avatar: true, bio: true, profilePublic: true, discordWebhook: true, calendarToken: true, totpEnabled: true, recoveryKeyHash: true },
     }),
     getPrefs(),
   ]);
@@ -22,6 +22,7 @@ export default async function SettingsPage() {
       user={{
         username: u.username,
         avatarColor: u.avatarColor,
+        avatar: u.avatar,
         bio: u.bio,
         profilePublic: u.profilePublic,
         discordWebhook: readWebhook(u.discordWebhook),

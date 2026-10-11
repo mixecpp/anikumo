@@ -116,7 +116,7 @@ export async function getUser() {
   if (!id) return null;
   return prisma.user.findUnique({
     where: { id },
-    select: { id: true, username: true, avatarColor: true, createdAt: true, isAdmin: true },
+    select: { id: true, username: true, avatarColor: true, avatar: true, createdAt: true, isAdmin: true },
   });
 }
 

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { Award, Eye, Star } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
@@ -15,7 +17,15 @@ type Props = { params: Promise<{ username: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
-  return { title: username, description: `${username}'s anime profile on AniKumo` };
+  const u = await prisma.user.findUnique({ where: { username }, select: { profilePublic: true, bannedAt: true, bio: true } });
+  const visible = !!u?.profilePublic && !u.bannedAt;
+  return pageMeta({
+    title: `${username}'s anime list`,
+    description: (visible && u?.bio ? u.bio : `${username}'s anime profile on AniKumo: watchlist, favourites, reviews and stats.`).slice(0, 160),
+    path: `/u/${username}`,
+    type: "profile",
+    noindex: !visible,
+  });
 }
 
 function Shelf({ title, items, href }: { title: string; items: { anilistId: number; title: string; coverImage: string; score?: number | null }[]; href?: string }) {
@@ -46,7 +56,7 @@ export default async function ProfilePage({ params }: Props) {
   const viewerId = await getUserId();
   const user = await prisma.user.findUnique({
     where: { username },
-    select: { id: true, username: true, avatarColor: true, bio: true, profilePublic: true, createdAt: true, _count: { select: { followers: true, following: true } } },
+    select: { id: true, username: true, avatarColor: true, avatar: true, bio: true, profilePublic: true, createdAt: true, _count: { select: { followers: true, following: true } } },
   });
   if (!user) notFound();
   const isOwner = viewerId === user.id;
@@ -82,7 +92,7 @@ export default async function ProfilePage({ params }: Props) {
         </div>
       )}
       <header className="flex flex-wrap items-center gap-5">
-        <Avatar name={user.username} color={user.avatarColor} size={72} />
+        <Avatar name={user.username} color={user.avatarColor} avatar={user.avatar} size={72} />
         <div className="min-w-0 flex-1">
           <h1 className="text-3xl font-semibold tracking-tight">{user.username}</h1>
           {user.bio && <p className="mt-1 max-w-xl text-sm text-fg/75">{user.bio}</p>}

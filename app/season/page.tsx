@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
+
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { currentSeason, getSeason, shiftSeason, SEASON_ORDER } from "@/lib/anilist";
 import { getUserId } from "@/lib/auth";
@@ -9,7 +11,7 @@ import ErrorNotice from "@/components/ErrorNotice";
 import SeasonChart from "@/components/season/SeasonChart";
 import PollCard from "@/components/season/PollCard";
 
-export const metadata: Metadata = { title: "Seasonal chart", description: "Every anime airing this season, plus next season's premieres." };
+export const metadata: Metadata = pageMeta({ title: "Seasonal anime chart", description: "Every anime airing this season with air dates, studios and scores, plus next season's premieres.", path: "/season" });
 
 type SP = Record<string, string | undefined>;
 

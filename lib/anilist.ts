@@ -221,6 +221,34 @@ export async function quickSearch(q: string) {
   });
 }
 
+export type SearchHit = {
+  anime: (Pick<MediaCard, "id" | "title" | "format" | "seasonYear" | "episodes"> & { coverImage: { large: string } })[];
+  characters: { id: number; name: { full: string; native: string | null }; image: { large: string }; media: { nodes: { title: Title }[] } }[];
+  staff: { id: number; name: { full: string; native: string | null }; image: { large: string }; primaryOccupations: string[] }[];
+  studios: { id: number; name: string; isAnimationStudio: boolean }[];
+};
+
+/** One round trip for the search box: anime, characters, staff and studios, best matches first. */
+export async function searchEverything(q: string): Promise<SearchHit> {
+  return cached(`search:${q.toLowerCase()}`, 60 * 10, async () => {
+    const data = await gql<{ anime: { media: SearchHit["anime"] }; characters: { characters: SearchHit["characters"] }; staff: { staff: SearchHit["staff"] }; studios: { studios: SearchHit["studios"] } }>(
+      `query ($q: String) {
+        anime: Page(perPage: 6) { media(type: ANIME, search: $q, isAdult: false, sort: SEARCH_MATCH) { id title { romaji english native userPreferred } coverImage { large } format seasonYear episodes } }
+        characters: Page(perPage: 3) { characters(search: $q, sort: SEARCH_MATCH) { id name { full native } image { large } media(perPage: 1, sort: POPULARITY_DESC, type: ANIME) { nodes { title { romaji english native userPreferred } } } } }
+        staff: Page(perPage: 2) { staff(search: $q, sort: SEARCH_MATCH) { id name { full native } image { large } primaryOccupations } }
+        studios: Page(perPage: 2) { studios(search: $q, sort: SEARCH_MATCH) { id name isAnimationStudio } }
+      }`,
+      { q },
+    );
+    return {
+      anime: data.anime?.media ?? [],
+      characters: data.characters?.characters ?? [],
+      staff: data.staff?.staff ?? [],
+      studios: (data.studios?.studios ?? []).filter((x) => x.isAnimationStudio),
+    };
+  });
+}
+
 export async function getMedia(id: number) {
   return cached(`media:${id}`, 60 * 60 * 6, async () => {
     const data = await gql<{ Media: MediaDetail | null }>(

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { browse } from "@/lib/anilist";
 import { parseBrowseParams, SEASONS, VIBES, browseQuery } from "@/lib/browse-params";
 import { getUserId } from "@/lib/auth";
@@ -7,9 +8,23 @@ import { prisma } from "@/lib/db";
 import { translator } from "@/lib/i18n";
 import BrowseView from "@/components/browse/BrowseView";
 
-export const metadata: Metadata = { title: "Browse", description: "Filter anime by genre, tags, length, score, season and more." };
-
 type SP = Record<string, string | string[] | undefined>;
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<SP> }): Promise<Metadata> {
+  const raw = await searchParams;
+  const p = parseBrowseParams(raw);
+  const keys = Object.keys(raw).filter((k) => raw[k] !== undefined && raw[k] !== "");
+  const season = SEASONS.find(([k]) => k === p.season)?.[1];
+  if (keys.length === 1 && p.genres?.length === 1) {
+    const g = p.genres[0];
+    return pageMeta({ title: `Best ${g} anime`, description: `The most popular ${g.toLowerCase()} anime, from new seasonal shows to all-time classics. Filter by year, score and length.`, path: `/browse?genre=${encodeURIComponent(g)}` });
+  }
+  if (keys.length === 2 && season && p.year && raw.season && raw.year) {
+    return pageMeta({ title: `${season} ${p.year} anime`, description: `Every anime from ${season} ${p.year}: TV series, movies and OVAs, sorted by popularity.`, path: `/browse?season=${p.season}&year=${p.year}` });
+  }
+  if (p.q) return { title: `Results for “${p.q}”`, robots: { index: false, follow: true } };
+  return pageMeta({ title: "Browse anime", description: "Browse thousands of anime by genre, tags, season, length and score. Find something new to watch.", path: "/browse", noindex: keys.length > 0 });
+}
 
 export default async function BrowsePage({ searchParams }: { searchParams: Promise<SP> }) {
   const params = parseBrowseParams(await searchParams);

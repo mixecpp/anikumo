@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { PRIVATE } from "@/lib/seo";
+
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import { libraryRoot } from "@/lib/library";
 import ScanButton from "@/components/ScanButton";
 
-export const metadata: Metadata = { title: "Library" };
+export const metadata: Metadata = { title: "Library", ...PRIVATE };
 export const dynamic = "force-dynamic";
 
 export default async function LibraryPage() {

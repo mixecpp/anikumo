@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { PRIVATE } from "@/lib/seo";
+
 import { WifiOff } from "lucide-react";
 
-export const metadata: Metadata = { title: "Offline" };
+export const metadata: Metadata = { title: "Offline", ...PRIVATE };
 
 export default function OfflinePage() {
   return (

@@ -1,16 +1,29 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { JsonLd, breadcrumbs, excerpt, pageMeta } from "@/lib/seo";
 import { Heart } from "lucide-react";
 import { getCharacter, prettyEnum, stripHtml } from "@/lib/anilist";
+
 import Synopsis from "@/components/Synopsis";
 import AnimeCard from "@/components/AnimeCard";
 
 type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const c = await getCharacter(Number((await params).id)).catch(() => null);
-  return { title: c?.name.full ?? "Character" };
+  const id = Number((await params).id);
+  const c = await getCharacter(id).catch(() => null);
+  if (!c) return { title: "Character" };
+  const show = c.media.edges[0]?.node;
+  const from = show ? ` from ${show.title.english ?? show.title.romaji}` : "";
+  return pageMeta({
+    title: `${c.name.full}${from}`,
+    description: excerpt(c.description, 160) || `${c.name.full}${from}: profile, appearances and voice actors.`,
+    path: `/character/${id}`,
+    image: c.image.large,
+    type: "profile",
+    keywords: [c.name.full, c.name.native, ...c.name.alternative].filter((k): k is string => !!k),
+  });
 }
 
 export default async function CharacterPage({ params }: Props) {
@@ -24,6 +37,7 @@ export default async function CharacterPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-[1100px] px-4 pt-10 md:px-8">
+      <JsonLd data={breadcrumbs([{ name: "Home", path: "/" }, ...(c.media.edges[0] ? [{ name: c.media.edges[0].node.title.english ?? c.media.edges[0].node.title.romaji ?? "Anime", path: `/anime/${c.media.edges[0].node.id}` }] : []), { name: c.name.full, path: `/character/${c.id}` }])} />
       <div className="flex flex-col gap-8 sm:flex-row">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={c.image.large} alt={c.name.full} className="w-40 shrink-0 self-start rounded-xl object-cover ring-1 ring-white/10" />

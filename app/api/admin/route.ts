@@ -5,13 +5,14 @@ import { getSession, requireAdmin, revokeSessions } from "@/lib/auth";
 import { fail, readJson } from "@/lib/http";
 import { logAdmin } from "@/lib/admin";
 import { notify } from "@/lib/notifications";
+import { deleteAvatarFile } from "@/lib/uploads";
 
 const TAGS = new Set(["new", "improved", "fixed"]);
 
 /**
  * Moderation:  resolve | dismiss {reportId} (resolve deletes the content), deleteComment | deleteReview {id}
  * Users:       resetPassword {userId, password}, setAdmin {userId, value}, ban {userId, reason}, unban {userId},
- *              signOut {userId}, deleteUser {userId, confirm: username}
+ *              signOut {userId}, removeAvatar {userId}, deleteUser {userId, confirm: username}
  * Changelog:   changelogCreate {title, body, tag, version, notify}, changelogDelete {id}
  * System:      clearErrors
  * Every action is written to the audit log.
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
   }
 
   // ── User actions ──
-  const user = await prisma.user.findUnique({ where: { id: str("userId") }, select: { id: true, username: true, isAdmin: true } });
+  const user = await prisma.user.findUnique({ where: { id: str("userId") }, select: { id: true, username: true, isAdmin: true, avatar: true } });
   if (!user) return fail(b.userId ? "User not found" : "Unknown action", b.userId ? 404 : 400);
   const self = user.id === admin.id;
 
@@ -103,6 +104,12 @@ export async function POST(req: Request) {
       await log("Banned user", user.username, reason);
       return NextResponse.json({ ok: true });
     }
+    case "removeAvatar": {
+      await prisma.user.update({ where: { id: user.id }, data: { avatar: "" } });
+      await deleteAvatarFile(user.avatar);
+      await log("Removed profile picture", user.username);
+      return NextResponse.json({ ok: true });
+    }
     case "unban": {
       await prisma.user.update({ where: { id: user.id }, data: { bannedAt: null, banReason: "" } });
       await log("Unbanned user", user.username);
@@ -118,6 +125,7 @@ export async function POST(req: Request) {
       if (self) return fail("Delete your own account from Settings");
       if (user.isAdmin) return fail("Remove their admin access first");
       if (str("confirm") !== user.username) return fail("Type the username to confirm");
+      await deleteAvatarFile(user.avatar);
       await prisma.$transaction([
         prisma.watchTime.deleteMany({ where: { userId: user.id } }),
         prisma.watchCursor.deleteMany({ where: { userId: user.id } }),

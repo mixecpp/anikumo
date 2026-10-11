@@ -10,7 +10,7 @@ import SpoilerText from "./SpoilerText";
 import ReportButton from "./ReportButton";
 import { toast } from "@/lib/toast";
 
-type U = { id: string; username: string; avatarColor: string; profilePublic: boolean };
+type U = { id: string; username: string; avatarColor: string; avatar: string; profilePublic: boolean };
 type C = { id: string; body: string; createdAt: string; editedAt: string | null; likeCount: number; liked: boolean; user: U; replies?: C[] };
 
 function ago(iso: string) {
@@ -135,7 +135,7 @@ export default function Comments({ anilistId, episode, loggedIn }: { anilistId: 
     const mine = c.user.id === me;
     return (
       <div key={c.id} id={`comment-${c.id}`} className="group flex scroll-mt-28 gap-3">
-        <Avatar name={c.user.username} color={c.user.avatarColor} size={isReply ? 26 : 32} />
+        <Avatar name={c.user.username} color={c.user.avatarColor} avatar={c.user.avatar} size={isReply ? 26 : 32} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-sm">
             {c.user.profilePublic ? (

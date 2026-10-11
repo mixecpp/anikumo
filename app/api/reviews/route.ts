@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     orderBy: [{ votes: { _count: "desc" } }, { createdAt: "desc" }],
     take: 50,
     include: {
-      user: { select: { id: true, username: true, avatarColor: true, profilePublic: true } },
+      user: { select: { id: true, username: true, avatarColor: true, avatar: true, profilePublic: true } },
       votes: { where: { userId: me ?? "" }, select: { userId: true } },
       _count: { select: { votes: true } },
     },

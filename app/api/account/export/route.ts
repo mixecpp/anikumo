@@ -11,6 +11,7 @@ export async function GET() {
       where: { id: userId },
       select: {
         username: true,
+        avatar: true,
         bio: true,
         createdAt: true,
         preferences: true,

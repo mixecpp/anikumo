@@ -2,7 +2,7 @@ import { prisma } from "./db";
 
 export type FriendActivity = {
   username: string;
-  avatarColor: string;
+  avatarColor: string; avatar: string;
   anilistId: number;
   title: string;
   coverImage: string;
@@ -20,11 +20,12 @@ export async function friendsActivity(userId: string, take = 12): Promise<Friend
     where: { userId: { in: following.map((f) => f.followingId) }, user: { profilePublic: true } },
     orderBy: { updatedAt: "desc" },
     take,
-    include: { user: { select: { username: true, avatarColor: true } } },
+    include: { user: { select: { username: true, avatarColor: true, avatar: true } } },
   });
   return rows.map((r) => ({
     username: r.user.username,
     avatarColor: r.user.avatarColor,
+    avatar: r.user.avatar,
     anilistId: r.anilistId,
     title: r.title,
     coverImage: r.coverImage,
@@ -42,7 +43,7 @@ export async function friendsOnShow(userId: string | null, anilistId: number) {
   if (!following.length) return null;
   const rows = await prisma.listEntry.findMany({
     where: { anilistId, userId: { in: following.map((f) => f.followingId) }, user: { profilePublic: true } },
-    include: { user: { select: { username: true, avatarColor: true } } },
+    include: { user: { select: { username: true, avatarColor: true, avatar: true } } },
   });
   if (!rows.length) return null;
   const scored = rows.filter((r) => r.score !== null);
@@ -51,6 +52,6 @@ export async function friendsOnShow(userId: string | null, anilistId: number) {
     completed: rows.filter((r) => r.status === "COMPLETED").length,
     watching: rows.filter((r) => r.status === "WATCHING").length,
     avgScore: scored.length ? scored.reduce((n, r) => n + (r.score ?? 0), 0) / scored.length : null,
-    people: rows.slice(0, 5).map((r) => ({ username: r.user.username, avatarColor: r.user.avatarColor, status: r.status, score: r.score })),
+    people: rows.slice(0, 5).map((r) => ({ username: r.user.username, avatarColor: r.user.avatarColor, avatar: r.user.avatar, status: r.status, score: r.score })),
   };
 }

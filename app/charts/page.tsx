@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
+
 import { Star } from "lucide-react";
 import { getTopChart, prettyEnum } from "@/lib/anilist";
 import { GENRE_LIST } from "@/lib/browse-params";
@@ -10,7 +12,7 @@ import { STATUS_DOT, STATUS_LABEL } from "@/lib/list-shared";
 import ErrorNotice from "@/components/ErrorNotice";
 import ChartFilters from "@/components/charts/ChartFilters";
 
-export const metadata: Metadata = { title: "Charts", description: "The 100 highest rated anime of all time, by genre and year, plus hidden gems." };
+export const metadata: Metadata = pageMeta({ title: "Top 100 anime of all time", description: "The highest rated anime of all time, by genre and by year, plus underrated hidden gems.", path: "/charts" });
 
 type SP = Record<string, string | undefined>;
 

@@ -10,7 +10,7 @@ export const alt = "Profile on AniKumo";
 
 export default async function Image({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
-  const user = await prisma.user.findUnique({ where: { username }, select: { id: true, username: true, avatarColor: true, profilePublic: true } });
+  const user = await prisma.user.findUnique({ where: { username }, select: { id: true, username: true, avatarColor: true, avatar: true, profilePublic: true } });
   const visible = user?.profilePublic;
   const stats = visible ? await getAccountStats(user.id) : null;
   return new ImageResponse(

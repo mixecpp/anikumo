@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import ErrorNotice from "@/components/ErrorNotice";
 import ScheduleView from "@/components/ScheduleView";
 import { getSchedule, titleOf } from "@/lib/anilist";
 import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-export const metadata: Metadata = { title: "Airing schedule" };
+export const metadata: Metadata = pageMeta({ title: "Anime airing schedule", description: "When new episodes air this week, in your time zone, with countdowns for every show.", path: "/schedule" });
 export const dynamic = "force-dynamic";
 
 export default async function SchedulePage() {

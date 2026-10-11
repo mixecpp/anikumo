@@ -23,7 +23,7 @@ type Props = { params: Promise<{ id: string; ep: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id, ep } = await params;
   const m = await getMedia(Number(id)).catch(() => null);
-  return { title: m ? `${titleOf(m)} · Episode ${ep}` : "Watch" };
+  return { title: m ? `${titleOf(m)} · Episode ${ep}` : "Watch", robots: { index: false, follow: true } };
 }
 
 export default async function WatchPage({ params }: Props) {

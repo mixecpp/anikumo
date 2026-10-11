@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
+
 import { Star } from "lucide-react";
 import { getMedia, prettyEnum, type MediaDetail } from "@/lib/anilist";
 import { getUi } from "@/lib/server-i18n";
@@ -8,7 +10,7 @@ import { prisma } from "@/lib/db";
 import { STATUS_LABEL, isStatus } from "@/lib/list-shared";
 import ComparePicker from "@/components/compare/ComparePicker";
 
-export const metadata: Metadata = { title: "Compare", description: "Compare two anime side by side." };
+export const metadata: Metadata = pageMeta({ title: "Compare anime", description: "Compare two anime side by side: scores, episodes, studios, genres and popularity.", path: "/compare" });
 
 type SP = Record<string, string | undefined>;
 

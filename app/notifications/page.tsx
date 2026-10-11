@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { PRIVATE } from "@/lib/seo";
+
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import { syncEpisodeAlerts } from "@/lib/notifications";
 import { getUi } from "@/lib/server-i18n";
 import NotificationsView from "@/components/NotificationsView";
 
-export const metadata: Metadata = { title: "Notifications" };
+export const metadata: Metadata = { title: "Notifications", ...PRIVATE };
 export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {

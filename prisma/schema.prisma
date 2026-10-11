@@ -12,6 +12,8 @@ model User {
   username     String   @unique
   passwordHash String
   avatarColor  String   @default("#e11d48")
+  // "" | "preset:<key>" | "upload:<id>.webp" — see lib/avatars.ts
+  avatar       String   @default("")
   createdAt    DateTime @default(now())
 
   bio             String    @default("")

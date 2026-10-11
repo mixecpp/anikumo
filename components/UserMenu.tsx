@@ -9,8 +9,16 @@ import { toast } from "@/lib/toast";
 import { useT } from "./PrefsProvider";
 import type { MessageKey } from "@/lib/i18n";
 import { NewDot, useChangelogUnseen } from "./WhatsNew";
+import { avatarUrl } from "@/lib/avatars";
 
-export function Avatar({ name, color, size = 32 }: { name: string; color: string; size?: number }) {
+/** Profile picture, or the coloured initial when there isn't one. */
+export function Avatar({ name, color, avatar, size = 32 }: { name: string; color: string; avatar?: string | null; size?: number }) {
+  const src = avatarUrl(avatar);
+  if (src)
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={src} alt="" width={size} height={size} loading="lazy" decoding="async" className="shrink-0 rounded-full bg-white/[0.06] object-cover object-[center_15%]" style={{ width: size, height: size }} aria-hidden />
+    );
   return (
     <span
       className="grid shrink-0 place-items-center rounded-full font-semibold uppercase text-[#fff]"
@@ -32,7 +40,7 @@ const ACCOUNT_LINKS: { href: string; label: MessageKey; icon: typeof LayoutGrid 
   { href: "/account/settings", label: "menu.settings", icon: Settings },
 ];
 
-type U = { username: string; avatarColor: string; isAdmin: boolean; profilePublic: boolean };
+type U = { username: string; avatarColor: string; avatar: string; isAdmin: boolean; profilePublic: boolean };
 
 export default function UserMenu({ user, latestChangelog }: { user: U | null; latestChangelog: string | null }) {
   const router = useRouter();
@@ -66,7 +74,7 @@ export default function UserMenu({ user, latestChangelog }: { user: U | null; la
     <div ref={ref} className="relative shrink-0">
       <button onClick={() => setOpen((o) => !o)} className="press relative flex items-center rounded-full" aria-label="Account menu" aria-expanded={open}>
         {user ? (
-          <Avatar name={user.username} color={user.avatarColor} />
+          <Avatar name={user.username} color={user.avatarColor} avatar={user.avatar} />
         ) : (
           <span className="grid h-8 w-8 place-items-center rounded-full bg-white/[0.07] text-muted transition-colors hover:text-fg">
             <UserRound className="h-4 w-4" />
@@ -86,7 +94,7 @@ export default function UserMenu({ user, latestChangelog }: { user: U | null; la
             {user ? (
               <>
                 <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-2.5 pb-2.5 pt-1.5">
-                  <Avatar name={user.username} color={user.avatarColor} size={28} />
+                  <Avatar name={user.username} color={user.avatarColor} avatar={user.avatar} size={28} />
                   <div className="min-w-0 truncate text-sm font-medium">{user.username}</div>
                 </div>
                 <div className="border-b border-white/[0.06] py-1">

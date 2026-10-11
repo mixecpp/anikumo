@@ -11,7 +11,7 @@ type Props = { params: Promise<{ username: string; id: string }> };
 async function load({ username, id }: { username: string; id: string }) {
   const list = await prisma.customList.findFirst({
     where: { id, user: { username } },
-    include: { items: { orderBy: { position: "asc" } }, user: { select: { id: true, username: true, avatarColor: true, profilePublic: true } } },
+    include: { items: { orderBy: { position: "asc" } }, user: { select: { id: true, username: true, avatarColor: true, avatar: true, profilePublic: true } } },
   });
   return list;
 }
@@ -31,7 +31,7 @@ export default async function PublicListPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-[900px] px-4 pt-10 md:px-8">
       <Link href={`/u/${list.user.username}`} className="flex items-center gap-2 text-sm text-muted hover:text-fg">
-        <Avatar name={list.user.username} color={list.user.avatarColor} size={22} /> {list.user.username}
+        <Avatar name={list.user.username} color={list.user.avatarColor} avatar={list.user.avatar} size={22} /> {list.user.username}
       </Link>
       <div className="mt-3 flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">

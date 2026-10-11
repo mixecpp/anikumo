@@ -152,7 +152,7 @@ export default async function AccountOverview() {
             {friends.map((f) => (
               <li key={`${f.username}-${f.anilistId}`} className="flex items-center gap-3 p-3">
                 <Link href={`/u/${f.username}`}>
-                  <Avatar name={f.username} color={f.avatarColor} size={28} />
+                  <Avatar name={f.username} color={f.avatarColor} avatar={f.avatar} size={28} />
                 </Link>
                 <div className="min-w-0 flex-1 text-sm">
                   <Link href={`/u/${f.username}`} className="font-medium hover:underline">

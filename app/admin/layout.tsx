@@ -1,7 +1,11 @@
+import type { Metadata } from "next";
+import { PRIVATE } from "@/lib/seo";
 import { requireAdminPage } from "@/lib/auth";
 import AdminNav from "@/components/admin/AdminNav";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = PRIVATE;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await requireAdminPage(); // pages check again: layouts alone don't protect them

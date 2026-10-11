@@ -4,6 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
+import sharp from "sharp";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:8080";
 
@@ -138,6 +139,37 @@ test("accounts, lists, social and pages", async (t) => {
       const r = await a("PATCH", "/api/prefs", { theme: "light", titleLang: "romaji" });
       assert.equal(r.json.prefs.theme, "light");
       assert.equal(r.json.prefs.titleLang, "romaji");
+    });
+
+    await t.test("profile pictures: upload, preset, reject, remove", async () => {
+      const upload = async (buf, type, name) => {
+        const form = new FormData();
+        form.append("file", new Blob([buf], { type }), name);
+        const res = await fetch(BASE + "/api/account/avatar", { method: "POST", body: form, headers: { "X-Forwarded-For": RUN_IP, Cookie: A.cookie } });
+        return { status: res.status, json: await res.json() };
+      };
+      // grab A's session cookie from a fresh login
+      const login = await fetch(BASE + "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json", "X-Forwarded-For": RUN_IP }, body: JSON.stringify({ username: A.username, password: A.password }) });
+      A.cookie = login.headers.get("set-cookie").match(/aw_session=[^;]*/)[0];
+
+      const png = await sharp({ create: { width: 400, height: 300, channels: 3, background: "#f6a57c" } }).png().toBuffer();
+      const ok = await upload(png, "image/png", "me.png");
+      assert.equal(ok.status, 200);
+      assert.match(ok.json.avatar, /^upload:[a-z0-9]{24}.webp$/);
+      const img = await fetch(BASE + ok.json.url);
+      assert.equal(img.headers.get("content-type"), "image/webp");
+      const meta = await sharp(Buffer.from(await img.arrayBuffer())).metadata();
+      assert.deepEqual([meta.width, meta.height, meta.format], [256, 256, "webp"]);
+
+      const fake = await upload(Buffer.from("<script>alert(1)</script>"), "image/png", "x.png");
+      assert.equal(fake.status, 400, "non-images are rejected even with an image MIME type");
+
+      const preset = await a("PATCH", "/api/account/avatar", { preset: "monkey-d-luffy" });
+      assert.equal(preset.json.avatar, "preset:monkey-d-luffy");
+      assert.equal((await fetch(BASE + ok.json.url)).status, 404, "old upload is deleted when replaced");
+      assert.equal((await a("PATCH", "/api/account/avatar", { preset: "../../etc/passwd" })).status, 400);
+      assert.equal((await a("DELETE", "/api/account/avatar")).json.avatar, "");
+      assert.ok([400, 404].includes((await fetch(BASE + "/avatars/..%2F..%2F.env")).status), "path traversal is refused");
     });
 
     await t.test("admin: metrics, bans and changelog", async () => {
