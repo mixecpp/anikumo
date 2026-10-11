@@ -39,18 +39,18 @@ as_app bash -c "git -C '$REPO' archive '$NEW' | tar -x -C '$REL'"
 if [[ -d "$APP/current/node_modules" ]] && cmp -s "$APP/current/package-lock.json" "$REL/package-lock.json"; then
   log "lockfile unchanged, copying node_modules"
   as_app cp -a "$APP/current/node_modules" "$REL/node_modules"
-  as_app bash -c "cd '$REL' && npx --no-install prisma generate >/dev/null"
+  as_app bash -c "cd '$REL' && ./node_modules/.bin/prisma generate >/dev/null"
 else
   log "installing dependencies"
-  as_app bash -c "cd '$REL' && npm ci --no-audit --no-fund --loglevel=error"
+  as_app bash -c "cd '$REL' && npm ci --include=dev --no-audit --no-fund --loglevel=error"
 fi
 
 log "backing up database"
 as_app bash -c "cd '$REL' && node scripts/db-backup.mjs"
 log "applying migrations"
-as_app bash -c "cd '$REL' && npx --no-install prisma migrate deploy"
+as_app bash -c "cd '$REL' && ./node_modules/.bin/prisma migrate deploy"
 log "building"
-as_app bash -c "cd '$REL' && npx --no-install next build"
+as_app bash -c "cd '$REL' && ./node_modules/.bin/next build"
 echo "$NEW" > "$REL/.release"
 chown anikumo:anikumo "$REL/.release"
 

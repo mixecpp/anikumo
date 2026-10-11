@@ -51,10 +51,11 @@ EOF
       echo "created /etc/anikumo/anikumo.env"
     fi
 
+    SSH_CMD="ssh -i $APP/.ssh/deploy_key -o IdentitiesOnly=yes -o UserKnownHostsFile=$APP/.ssh/known_hosts"
     if [[ ! -d "$APP/repo/.git" ]]; then
-      runuser -u anikumo -- git clone --quiet --no-checkout "$URL" "$APP/repo"
+      runuser -u anikumo -- env GIT_SSH_COMMAND="$SSH_CMD" git clone --quiet --no-checkout "$URL" "$APP/repo"
     fi
-    runuser -u anikumo -- git -C "$APP/repo" config core.sshCommand "ssh -i $APP/.ssh/deploy_key -o IdentitiesOnly=yes -o UserKnownHostsFile=$APP/.ssh/known_hosts"
+    runuser -u anikumo -- git -C "$APP/repo" config core.sshCommand "$SSH_CMD"
     runuser -u anikumo -- git -C "$APP/repo" remote set-url origin "$URL"
 
     install -m 755 "$HERE/deploy.sh" "$APP/bin/deploy.sh"
