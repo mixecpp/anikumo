@@ -59,7 +59,7 @@ ln -sfn "$REL" "$APP/current.tmp" && mv -Tf "$APP/current.tmp" "$APP/current"
 systemctl restart anikumo
 
 for _ in $(seq 1 45); do
-  if curl -fsS -o /dev/null --max-time 5 "http://127.0.0.1:$PORT/"; then
+  if curl -fs -o /dev/null --max-time 5 "http://127.0.0.1:$PORT/"; then
     log "live: ${NEW:0:7}"
     ls -1dt "$APP"/releases/*/ | tail -n +$((KEEP + 1)) | xargs -r rm -rf
     exit 0
