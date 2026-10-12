@@ -17,6 +17,7 @@ import { arrangeContinue, becauseYouWatched, unfinished } from "@/lib/home-perso
 import { getUi } from "@/lib/server-i18n";
 import { pickTitle } from "@/lib/prefs-shared";
 import FadeRow from "@/components/FadeRow";
+import TelegramCard, { TELEGRAM_URL } from "@/components/TelegramCard";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ const SITE_JSON_LD = [
     url: appUrl("/"),
     potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: appUrl("/browse?q={search_term_string}") }, "query-input": "required name=search_term_string" },
   },
-  { "@context": "https://schema.org", "@type": "Organization", name: SITE_NAME, url: appUrl("/"), logo: appUrl("/pwa-icon") },
+  { "@context": "https://schema.org", "@type": "Organization", name: SITE_NAME, url: appUrl("/"), logo: appUrl("/pwa-icon"), sameAs: [TELEGRAM_URL] },
 ];
 
 export default async function Home() {
@@ -99,6 +100,10 @@ export default async function Home() {
 
         {hasContinue && <MediaGrid title={t("home.trending")} items={trending} href="/browse?sort=trending" ranked />}
         <MediaGrid title={t("home.season")} items={noEcchi(data.seasonal.media)} href="/season" />
+
+        <Reveal>
+          <TelegramCard />
+        </Reveal>
 
         <FadeRow className="scrollbar-none -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 md:mx-0 md:grid md:snap-none md:grid-cols-2 md:gap-x-8 md:overflow-visible md:px-0">
           <div className="w-[88%] shrink-0 snap-start md:w-auto">
