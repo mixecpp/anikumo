@@ -10,7 +10,11 @@ function shape<T extends { likes: { userId: string }[]; _count: { likes: number 
   return { ...rest, likeCount: _count.likes, liked: !!me && likes.some((l) => l.userId === me) };
 }
 
-/** GET ?anilistId&episode&sort=new|top → top-level comments with their replies. */
+/**
+ * GET ?anilistId&episode&sort=new|top → top-level comments with their replies.
+ * GET ?anilistId&episode&peek=1 → just the total count and the most-liked comment (for the
+ * comments preview under the player on phones).
+ */
 export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
   const anilistId = toInt(sp.get("anilistId"));
@@ -18,6 +22,18 @@ export async function GET(req: Request) {
   const episode = sp.get("episode") ? toInt(sp.get("episode")) : null;
   const sort = sp.get("sort") === "top" ? "top" : "new";
   const me = await requireUserId();
+
+  if (sp.get("peek")) {
+    const [count, top] = await Promise.all([
+      prisma.comment.count({ where: { anilistId, episode } }),
+      prisma.comment.findFirst({
+        where: { anilistId, episode, parentId: null },
+        orderBy: [{ likes: { _count: "desc" } }, { createdAt: "desc" }],
+        select: { id: true, body: true, user: { select: { username: true, avatarColor: true, avatar: true } } },
+      }),
+    ]);
+    return NextResponse.json({ count, top });
+  }
 
   const include = {
     user: USER,

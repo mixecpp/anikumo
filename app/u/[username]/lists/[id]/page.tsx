@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
+import { parseSections } from "@/lib/privacy-shared";
 import { Avatar } from "@/components/UserMenu";
 import ShareButton from "@/components/ShareButton";
 
@@ -11,7 +12,7 @@ type Props = { params: Promise<{ username: string; id: string }> };
 async function load({ username, id }: { username: string; id: string }) {
   const list = await prisma.customList.findFirst({
     where: { id, user: { username } },
-    include: { items: { orderBy: { position: "asc" } }, user: { select: { id: true, username: true, avatarColor: true, avatar: true, profilePublic: true } } },
+    include: { items: { orderBy: { position: "asc" } }, user: { select: { id: true, username: true, avatarColor: true, avatar: true, profilePublic: true, profileSections: true } } },
   });
   return list;
 }
@@ -26,7 +27,7 @@ export default async function PublicListPage({ params }: Props) {
   const viewer = await getUserId();
   if (!list) notFound();
   const isOwner = viewer === list.user.id;
-  if (!isOwner && (!list.isPublic || !list.user.profilePublic)) notFound();
+  if (!isOwner && (!list.isPublic || !list.user.profilePublic || !parseSections(list.user.profileSections).lists)) notFound();
 
   return (
     <div className="mx-auto max-w-[900px] px-4 pt-10 md:px-8">

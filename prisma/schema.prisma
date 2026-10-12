@@ -19,6 +19,15 @@ model User {
   bio             String    @default("")
   isAdmin         Boolean   @default(false)
   profilePublic   Boolean   @default(false)
+  /// "everyone" | "followers" | "private". profilePublic mirrors visibility == "everyone".
+  profileVisibility String  @default("private")
+  /// JSON of profile sections hidden from visitors, e.g. {"stats":false} (see lib/privacy.ts)
+  profileSections String    @default("{}")
+  searchable      Boolean   @default(true)
+  onLeaderboard   Boolean   @default(true)
+  allowFollows    Boolean   @default(true)
+  /// An AniList anime banner shown across the top of the profile.
+  profileBanner   String    @default("")
   totpSecret      String?
   totpEnabled     Boolean   @default(false)
   recoveryCodes   String    @default("[]")

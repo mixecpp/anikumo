@@ -6,8 +6,8 @@ import { getMedia, prettyEnum, stripHtml, titleOf } from "@/lib/anilist";
 import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildEpisodes, getEpisodeProgress, getLibraryEpisodes } from "@/lib/episodes";
-import WatchClient from "@/components/WatchClient";
-import Comments from "@/components/Comments";
+import PlayerSlot from "@/components/player/PlayerSlot";
+import { CommentsPeek, InlineComments } from "@/components/watch/WatchDiscussion";
 import Row from "@/components/Row";
 import SetAmbient from "@/components/SetAmbient";
 import EpisodePanel from "@/components/watch/EpisodePanel";
@@ -95,7 +95,9 @@ export default async function WatchPage({ params }: Props) {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
         <div className="min-w-0">
-          <WatchClient
+          <PlayerSlot
+            href={`/watch/${id}/${ep}`}
+            image={m.coverImage.large}
             anilistId={id}
             episode={ep}
             idMal={m.idMal}
@@ -111,6 +113,7 @@ export default async function WatchPage({ params }: Props) {
             source={source}
             initialSettings={settings}
           />
+          <CommentsPeek anilistId={id} episode={ep} loggedIn={!!userId} />
         </div>
 
         <aside className="space-y-5 xl:row-span-2">
@@ -129,7 +132,7 @@ export default async function WatchPage({ params }: Props) {
           )}
           <Reactions anilistId={id} episode={ep} />
           <RewatchTracker anilistId={id} active={rewatching} />
-          <Comments anilistId={id} episode={ep} loggedIn={!!userId} />
+          <InlineComments anilistId={id} episode={ep} loggedIn={!!userId} />
         </div>
       </div>
     </div>

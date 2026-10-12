@@ -10,8 +10,8 @@ export async function POST(req: Request) {
   if (!userId) return fail("Log in to follow people", 401);
   if (!rateLimit(`follow:${userId}`, 60, 60 * 60_000).ok) return fail("Slow down a little.", 429);
   const { username } = await readJson<{ username: string }>(req);
-  const target = await prisma.user.findUnique({ where: { username: String(username ?? "") }, select: { id: true, profilePublic: true } });
-  if (!target || !target.profilePublic) return fail("User not found", 404);
+  const target = await prisma.user.findUnique({ where: { username: String(username ?? "") }, select: { id: true, profileVisibility: true, allowFollows: true } });
+  if (!target || target.profileVisibility === "private") return fail("User not found", 404);
   if (target.id === userId) return fail("You can't follow yourself");
 
   const key = { followerId_followingId: { followerId: userId, followingId: target.id } };
@@ -20,6 +20,8 @@ export async function POST(req: Request) {
     await prisma.follow.delete({ where: key });
     return NextResponse.json({ following: false });
   }
+  // Unfollowing always works; new follows only when they allow it.
+  if (!target.allowFollows) return fail("This person isn't accepting new followers", 403);
   await prisma.follow.create({ data: { followerId: userId, followingId: target.id } });
   const me = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { username: true, profilePublic: true } });
   await notify(target.id, {

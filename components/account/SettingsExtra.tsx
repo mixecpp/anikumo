@@ -80,49 +80,6 @@ export function PreferencesCard({ prefs }: { prefs: Prefs }) {
   );
 }
 
-/* ───────── Public profile ───────── */
-
-export function ProfileVisibilityCard({ username, bio: initialBio, profilePublic }: { username: string; bio: string; profilePublic: boolean }) {
-  const router = useRouter();
-  const [bio, setBio] = useState(initialBio);
-  const [pub, setPub] = useState(profilePublic);
-  return (
-    <SettingsCard
-      id="visibility"
-      title="Public profile"
-      description="Off by default. When on, others can see your profile, follow you and find you on the leaderboard."
-      footer={
-        <>
-          <span className="font-mono text-[11px] text-muted">/u/{username}</span>
-          <button onClick={async () => (await patchAccount({ bio })) && (toast("Bio saved"), router.refresh())} disabled={bio === initialBio} className="btn btn-primary">
-            Save bio
-          </button>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        <Row title="Make my profile public" hint="Shows your stats, favorites, list and public custom lists">
-          <Toggle
-            on={pub}
-            onChange={async (v) => {
-              setPub(v);
-              if (await patchAccount({ profilePublic: v })) {
-                toast(v ? "Profile is public" : "Profile is private", "info");
-                router.refresh();
-              } else setPub(!v);
-            }}
-            label="Public profile"
-          />
-        </Row>
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-medium text-muted">Bio</span>
-          <textarea value={bio} onChange={(e) => setBio(e.target.value.slice(0, 300))} rows={2} placeholder="A line about your taste in anime" className="input resize-none text-sm" />
-        </label>
-      </div>
-    </SettingsCard>
-  );
-}
-
 /* ───────── Alerts ───────── */
 
 export function AlertsCard({ discordWebhook, calendarOn }: { discordWebhook: string | null; calendarOn: boolean }) {

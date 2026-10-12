@@ -6,12 +6,19 @@ import { fail, readJson } from "@/lib/http";
 import { isDiscordWebhook } from "@/lib/notifications";
 import { encrypt } from "@/lib/crypto";
 import { deleteAvatarFile } from "@/lib/uploads";
+import { BANNER_URL, isVisibility, serializeSections } from "@/lib/privacy-shared";
 
 type Body = {
   avatarColor: string; avatar: string;
   username: string;
   bio: string;
   profilePublic: boolean;
+  profileVisibility: string;
+  profileSections: Record<string, boolean>;
+  searchable: boolean;
+  onLeaderboard: boolean;
+  allowFollows: boolean;
+  profileBanner: string;
   discordWebhook: string | null;
   currentPassword: string;
   newPassword: string;
@@ -43,7 +50,25 @@ export async function PATCH(req: Request) {
     }
   }
   if (body.bio !== undefined) data.bio = String(body.bio).trim().slice(0, 300);
-  if (body.profilePublic !== undefined) data.profilePublic = body.profilePublic === true;
+  // Older clients send profilePublic; newer ones send profileVisibility. profilePublic always mirrors "everyone".
+  if (body.profilePublic !== undefined) {
+    data.profilePublic = body.profilePublic === true;
+    data.profileVisibility = body.profilePublic === true ? "everyone" : "private";
+  }
+  if (body.profileVisibility !== undefined) {
+    if (!isVisibility(body.profileVisibility)) return fail("Pick who can see your profile");
+    data.profileVisibility = body.profileVisibility;
+    data.profilePublic = body.profileVisibility === "everyone";
+  }
+  if (body.profileSections !== undefined) data.profileSections = serializeSections(body.profileSections);
+  for (const key of ["searchable", "onLeaderboard", "allowFollows"] as const) {
+    if (body[key] !== undefined) data[key] = body[key] === true;
+  }
+  if (body.profileBanner !== undefined) {
+    const url = String(body.profileBanner ?? "").trim();
+    if (url && !BANNER_URL.test(url)) return fail("Pick a banner from an anime");
+    data.profileBanner = url;
+  }
   if (body.discordWebhook !== undefined) {
     const url = body.discordWebhook ? String(body.discordWebhook).trim() : "";
     if (url && !isDiscordWebhook(url)) return fail("That doesn't look like a Discord webhook URL");

@@ -11,6 +11,23 @@ async function api(path, cookie, method = "GET", body, extraHeaders = {}) {
   const res = await fetch(base + path, { method, headers: { ...(cookie ? { Cookie: cookie } : {}), "Content-Type": "application/json", ...extraHeaders }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(30000) });
   return { status: res.status, data: await res.json(), cookie: res.headers.get("set-cookie")?.split(";")[0] };
 }
+// The player mounts in the browser now (it lives in the root layout so it can keep playing
+// while you browse), so instead of the server-rendered iframe we read the props the watch page
+// hands it: those decide the embed URL (resume point, audio, skips) and the watched state.
+function playerProps(html) {
+  const flight = [...html.matchAll(/self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)/g)].map((m) => JSON.parse(m[1])).join("");
+  const start = flight.indexOf('{"href":"/watch/');
+  if (start < 0) return null;
+  let depth = 0, inString = false, escaped = false;
+  for (let i = start; i < flight.length; i++) {
+    const c = flight[i];
+    if (inString) { if (escaped) escaped = false; else if (c === "\\") escaped = true; else if (c === '"') inString = false; continue; }
+    if (c === '"') inString = true;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) return JSON.parse(flight.slice(start, i + 1));
+  }
+  return null;
+}
 try {
   for (let i = 0; i < 2; i++) {
     const username = "playback_test_" + randomUUID().replaceAll("-", "");
@@ -41,9 +58,11 @@ try {
   assert.equal(progress[0].progressSeconds, 321);
   assert.deepEqual((await api("/api/progress?anilistId=21", b.cookie)).data.progress, []);
   const html = await (await fetch(base + "/watch/21/1", { headers: { Cookie: a.cookie }, signal: AbortSignal.timeout(30000) })).text();
-  const frame = html.match(/<iframe[^>]*>/)?.[0];
-  assert.ok(frame, "Player iframe exists");
-  if (frame.includes("flixcloud.cc")) { assert.ok(frame.includes("a=1")); assert.ok(frame.includes("start_at=321")); assert.ok(frame.includes("skI=true")); }
+  const player = playerProps(html);
+  assert.ok(player, "Player props exist");
+  assert.equal(player.resumeAt, 321);
+  assert.equal(player.initialSettings.audioTrack, "dub");
+  assert.equal(player.initialSettings.autoSkipIntro, true);
   console.log("PASS: account resume and audio/skip preferences are applied on the watch page");
   assert.equal((await api("/api/progress", a.cookie, "POST", { anilistId: 21, episode: 1, completed: true, sampledAt: stamp + 1 })).status, 200);
   progress = (await api("/api/progress?anilistId=21", a.cookie)).data.progress;
@@ -58,9 +77,7 @@ try {
   const markedAgain = await api("/api/progress", a.cookie, "POST", { anilistId: 21, episode: 1, completed: true, sampledAt: stamp + 4, expectedUserId: a.id });
   assert.equal(markedAgain.data.completed, true);
   const watchedHtml = await (await fetch(base + "/watch/21/1", { headers: { Cookie: a.cookie }, signal: AbortSignal.timeout(30000) })).text();
-  const watchedButton = watchedHtml.match(/<button[^>]*aria-label="Mark episode as unwatched"[^>]*>/)?.[0];
-  assert.ok(watchedButton?.includes('aria-pressed="true"'));
-  assert.equal(watchedButton.includes("disabled="), false, "Watched button must stay clickable to unmark");
+  assert.equal(playerProps(watchedHtml).completed, true);
   const lateMark = await api("/api/progress", a.cookie, "POST", { ...payload, progressSeconds: 1470, sampledAt: stamp + 5 });
   assert.equal(lateMark.data.completed, true);
   assert.equal((await api("/api/progress", a.cookie, "POST", { anilistId: 21, episode: 1, completed: false, sampledAt: stamp + 6, expectedUserId: a.id })).data.completed, false);
@@ -69,8 +86,7 @@ try {
   const staleMark = await api("/api/progress", a.cookie, "POST", { anilistId: 21, episode: 1, completed: true, sampledAt: stamp + 5, expectedUserId: a.id });
   assert.equal(staleMark.data.saved, false); assert.equal(staleMark.data.completed, false);
   const unwatchedHtml = await (await fetch(base + "/watch/21/1", { headers: { Cookie: a.cookie }, signal: AbortSignal.timeout(30000) })).text();
-  const unwatchedButton = unwatchedHtml.match(/<button[^>]*aria-label="Mark episode as watched"[^>]*>/)?.[0];
-  assert.ok(unwatchedButton?.includes('aria-pressed="false"'));
+  assert.equal(playerProps(unwatchedHtml).completed, false);
   assert.deepEqual((await api("/api/progress?anilistId=21", b.cookie)).data.progress, []);
   console.log("PASS: watched toggles persist, preserve position, ignore stale marks, and survive near-end polling and reload");
 } finally {

@@ -7,6 +7,7 @@ import MobileNav from "@/components/MobileNav";
 import AmbientBackground from "@/components/AmbientBackground";
 import Toaster from "@/components/Toaster";
 import Providers from "@/components/Providers";
+import PlayerProvider from "@/components/player/PlayerProvider";
 import ScrollTop from "@/components/ScrollTop";
 import Shortcuts, { ShortcutsButton } from "@/components/Shortcuts";
 import CommandPalette from "@/components/CommandPalette";
@@ -63,47 +64,49 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={`${geist.variable} ${geistMono.variable} relative min-h-svh`}>
         <PrefsProvider prefs={prefs} loggedIn={!!userId}>
           <Providers>
-            <a href="#main" className="sr-only z-[100] rounded-lg bg-fg px-3 py-2 text-sm text-bg focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
-              Skip to content
-            </a>
-            <AmbientBackground />
-            <Navbar libraryEnabled={libraryEnabled} />
-            <main id="main" className="pb-28 lg:pb-16">
-              {children}
-            </main>
-            <footer className="mx-auto mb-24 max-w-[1400px] border-t border-line px-4 pt-6 text-xs text-muted md:px-8 lg:mb-10">
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-                <nav className="flex flex-wrap gap-x-4 gap-y-1.5" aria-label="Footer">
-                  <span className="text-fg/80">AniKumo</span>
-                  <Link href="/season" className="hover:text-fg">{t("nav.season")}</Link>
-                  <Link href="/charts" className="hover:text-fg">{t("nav.charts")}</Link>
-                  <Link href="/trailers" className="hover:text-fg">Trailers</Link>
-                  <Link href="/compare" className="hover:text-fg">Compare</Link>
-                  <Link href="/changelog" className="hover:text-fg">What&apos;s new</Link>
-                  <ShortcutsButton />
-                </nav>
-                <span>
-                  {t("footer.data")}{" "}
-                  <a className="text-fg/70 hover:text-fg" href="https://anilist.co" target="_blank" rel="noreferrer">
-                    AniList
-                  </a>{" "}
-                  · {t("footer.skip")}{" "}
-                  <a className="text-fg/70 hover:text-fg" href="https://aniskip.com" target="_blank" rel="noreferrer">
-                    AniSkip
-                  </a>
-                </span>
-              </div>
-            </footer>
-            <MobileNav
-              libraryEnabled={libraryEnabled}
-              user={user ? { username: user.username, avatarColor: user.avatarColor, avatar: user.avatar } : null}
-              latestChangelog={latest?.createdAt.toISOString() ?? null}
-            />
-            <ScrollTop />
-            <Toaster />
-            <Shortcuts />
-            <CommandPalette />
-            <ServiceWorker />
+            <PlayerProvider>
+              <a href="#main" className="sr-only z-[100] rounded-lg bg-fg px-3 py-2 text-sm text-bg focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
+                Skip to content
+              </a>
+              <AmbientBackground />
+              <Navbar libraryEnabled={libraryEnabled} />
+              <main id="main" className="pb-28 lg:pb-16">
+                {children}
+              </main>
+              <footer className="mx-auto mb-24 max-w-[1400px] border-t border-line px-4 pt-6 text-xs text-muted md:px-8 lg:mb-10">
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+                  <nav className="flex flex-wrap gap-x-4 gap-y-1.5" aria-label="Footer">
+                    <span className="text-fg/80">AniKumo</span>
+                    <Link href="/season" className="hover:text-fg">{t("nav.season")}</Link>
+                    <Link href="/charts" className="hover:text-fg">{t("nav.charts")}</Link>
+                    <Link href="/trailers" className="hover:text-fg">Trailers</Link>
+                    <Link href="/compare" className="hover:text-fg">Compare</Link>
+                    <Link href="/changelog" className="hover:text-fg">What&apos;s new</Link>
+                    <ShortcutsButton />
+                  </nav>
+                  <span>
+                    {t("footer.data")}{" "}
+                    <a className="text-fg/70 hover:text-fg" href="https://anilist.co" target="_blank" rel="noreferrer">
+                      AniList
+                    </a>{" "}
+                    · {t("footer.skip")}{" "}
+                    <a className="text-fg/70 hover:text-fg" href="https://aniskip.com" target="_blank" rel="noreferrer">
+                      AniSkip
+                    </a>
+                  </span>
+                </div>
+              </footer>
+              <MobileNav
+                libraryEnabled={libraryEnabled}
+                user={user ? { username: user.username, avatarColor: user.avatarColor, avatar: user.avatar } : null}
+                latestChangelog={latest?.createdAt.toISOString() ?? null}
+              />
+              <ScrollTop />
+              <Toaster />
+              <Shortcuts />
+              <CommandPalette />
+              <ServiceWorker />
+            </PlayerProvider>
           </Providers>
         </PrefsProvider>
       </body>

@@ -438,3 +438,14 @@ button.chip:hover {
   -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
   mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
 }
+
+/* Keep scroll-to-top clear of the floating/mini video player (see PlayerProvider). */
+html[data-floating-player] .scroll-top {
+  bottom: calc(max(env(safe-area-inset-bottom), 0.4rem) + 4rem + 72px + 0.75rem);
+}
+@media (min-width: 768px) {
+  html[data-floating-player] .scroll-top {
+    bottom: 290px;
+    right: 24px;
+  }
+}

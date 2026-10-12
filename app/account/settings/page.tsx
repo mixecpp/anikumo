@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getPrefs } from "@/lib/prefs";
 import SettingsForms from "@/components/account/SettingsForms";
 import { readWebhook } from "@/lib/notifications";
+import { isVisibility, parseSections } from "@/lib/privacy-shared";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -12,7 +13,7 @@ export default async function SettingsPage() {
   const [u, prefs] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { username: true, avatarColor: true, avatar: true, bio: true, profilePublic: true, discordWebhook: true, calendarToken: true, totpEnabled: true, recoveryKeyHash: true },
+      select: { username: true, avatarColor: true, avatar: true, bio: true, profileBanner: true, profileVisibility: true, profileSections: true, searchable: true, onLeaderboard: true, allowFollows: true, discordWebhook: true, calendarToken: true, totpEnabled: true, recoveryKeyHash: true },
     }),
     getPrefs(),
   ]);
@@ -24,7 +25,16 @@ export default async function SettingsPage() {
         avatarColor: u.avatarColor,
         avatar: u.avatar,
         bio: u.bio,
-        profilePublic: u.profilePublic,
+        privacy: {
+          username: u.username,
+          bio: u.bio,
+          profileBanner: u.profileBanner,
+          profileVisibility: isVisibility(u.profileVisibility) ? u.profileVisibility : "private",
+          profileSections: parseSections(u.profileSections),
+          searchable: u.searchable,
+          onLeaderboard: u.onLeaderboard,
+          allowFollows: u.allowFollows,
+        },
         discordWebhook: readWebhook(u.discordWebhook),
         calendarOn: !!u.calendarToken,
         totpEnabled: u.totpEnabled,

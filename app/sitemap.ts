@@ -37,7 +37,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
       .filter((s) => SEASON_ORDER.includes(s.season as (typeof SEASON_ORDER)[number]))
       .map((s) => ({ url: appUrl(`/browse?season=${s.season}&year=${s.year}`), changeFrequency: "weekly" as const, priority: 0.5 }));
     const [profiles, lists] = await Promise.all([
-      prisma.user.findMany({ where: { profilePublic: true, bannedAt: null }, select: { username: true, createdAt: true }, take: 5000 }),
+      prisma.user.findMany({ where: { profilePublic: true, searchable: true, bannedAt: null }, select: { username: true, createdAt: true }, take: 5000 }),
       prisma.customList.findMany({ where: { isPublic: true, user: { profilePublic: true, bannedAt: null } }, select: { id: true, updatedAt: true, user: { select: { username: true } } }, take: 5000 }),
     ]);
     return [

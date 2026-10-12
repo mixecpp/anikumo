@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const [hits, users, prefs] = await Promise.all([
     searchEverything(q).catch(() => null),
     /^[a-zA-Z0-9_]+$/.test(q)
-      ? prisma.user.findMany({ where: { profilePublic: true, bannedAt: null, username: { startsWith: q } }, select: { username: true, avatarColor: true, avatar: true }, take: 3 })
+      ? prisma.user.findMany({ where: { profilePublic: true, searchable: true, bannedAt: null, username: { startsWith: q } }, select: { username: true, avatarColor: true, avatar: true }, take: 3 })
       : [],
     getPrefs(),
   ]);

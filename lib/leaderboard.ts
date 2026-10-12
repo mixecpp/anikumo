@@ -13,11 +13,11 @@ function since(period: LeaderPeriod) {
   return localDay(d);
 }
 
-/** Ranked by active watch time. Only users who made their profile public appear. */
+/** Ranked by active watch time. Only public profiles that haven't opted out appear. */
 export async function getLeaderboard(period: LeaderPeriod, limit = 50): Promise<LeaderRow[]> {
   return cached(`leaderboard:${period}:${limit}`, 120, async () => {
     const day = since(period);
-    const publicUsers = await prisma.user.findMany({ where: { profilePublic: true }, select: { id: true, username: true, avatarColor: true, avatar: true } });
+    const publicUsers = await prisma.user.findMany({ where: { profilePublic: true, onLeaderboard: true, bannedAt: null }, select: { id: true, username: true, avatarColor: true, avatar: true } });
     if (!publicUsers.length) return [];
     const ids = publicUsers.map((u) => u.id);
     const where = { userId: { in: ids }, ...(day ? { day: { gte: day } } : {}) };

@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Bell, Check, Database, Download, Eye, EyeOff, Globe, KeyRound, Keyboard, LoaderCircle, ShieldCheck, SlidersHorizontal, TriangleAlert, Upload, UserRound } from "lucide-react";
 import type { Prefs } from "@/lib/prefs-shared";
-import { AlertsCard, ImportCard, KeyboardCard, PreferencesCard, ProfileVisibilityCard, SecurityCard } from "./SettingsExtra";
+import { AlertsCard, ImportCard, KeyboardCard, PreferencesCard, SecurityCard } from "./SettingsExtra";
+import { ProfilePrivacyCard, type PrivacyUser } from "./ProfilePrivacy";
 import { toast } from "@/lib/toast";
 import { Avatar } from "../UserMenu";
 import ConfirmButton from "./ConfirmButton";
@@ -15,7 +16,7 @@ const COLORS = ["#f6a57c", "#fb7185", "#f97316", "#eab308", "#22c55e", "#14b8a6"
 
 const SECTIONS = [
   { id: "profile", label: "Profile", icon: UserRound },
-  { id: "visibility", label: "Public profile", icon: Globe },
+  { id: "visibility", label: "Profile & privacy", icon: Globe },
   { id: "preferences", label: "Preferences", icon: SlidersHorizontal },
   { id: "alerts", label: "Alerts", icon: Bell },
   { id: "password", label: "Password", icon: KeyRound },
@@ -30,7 +31,7 @@ type User = {
   username: string;
   avatarColor: string; avatar: string;
   bio: string;
-  profilePublic: boolean;
+  privacy: PrivacyUser;
   discordWebhook: string | null;
   calendarOn: boolean;
   totpEnabled: boolean;
@@ -331,7 +332,7 @@ export default function SettingsForms({ user, prefs }: { user: User; prefs: Pref
           </div>
         </Card>
 
-        <ProfileVisibilityCard username={user.username} bio={user.bio} profilePublic={user.profilePublic} />
+        <ProfilePrivacyCard user={user.privacy} />
         <PreferencesCard prefs={prefs} />
         <AlertsCard discordWebhook={user.discordWebhook} calendarOn={user.calendarOn} />
 

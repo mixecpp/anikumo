@@ -86,7 +86,7 @@ export default function ListEditor({ list, items: initial, shareUrl, profilePubl
             </>
           )}
           {meta.isPublic && !profilePublic && (
-            <Link href="/account/settings#profile" className="text-xs text-muted hover:text-fg">
+            <Link href="/account/settings#visibility" className="text-xs text-muted hover:text-fg">
               Make your profile public to share this list
             </Link>
           )}

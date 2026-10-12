@@ -3,28 +3,32 @@ import { notFound } from "next/navigation";
 
 import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo";
-import { Award, Eye, Star } from "lucide-react";
+import { Award, Eye, Heart, Lock, MessageSquare, Star } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import { getAccountStats } from "@/lib/account";
 import { computeAchievements } from "@/lib/achievements";
 import { getSnapshots } from "@/lib/media";
 import { formatDuration } from "@/lib/watchtime";
+import { canViewProfile, parseSections, type Sections } from "@/lib/privacy";
 import { Avatar } from "@/components/UserMenu";
 import FollowButton from "@/components/FollowButton";
+import SpoilerText from "@/components/SpoilerText";
 
-type Props = { params: Promise<{ username: string }> };
+type Props = { params: Promise<{ username: string }>; searchParams: Promise<{ tab?: string; before?: string; preview?: string }> };
+
+const PAGE = 20;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
-  const u = await prisma.user.findUnique({ where: { username }, select: { profilePublic: true, bannedAt: true, bio: true } });
-  const visible = !!u?.profilePublic && !u.bannedAt;
+  const u = await prisma.user.findUnique({ where: { username }, select: { profileVisibility: true, searchable: true, bannedAt: true, bio: true } });
+  const visible = u?.profileVisibility === "everyone" && !u.bannedAt;
   return pageMeta({
     title: `${username}'s anime list`,
     description: (visible && u?.bio ? u.bio : `${username}'s anime profile on AniKumo: watchlist, favourites, reviews and stats.`).slice(0, 160),
     path: `/u/${username}`,
     type: "profile",
-    noindex: !visible,
+    noindex: !visible || !u?.searchable,
   });
 }
 
@@ -51,31 +55,151 @@ function Shelf({ title, items, href }: { title: string; items: { anilistId: numb
   );
 }
 
-export default async function ProfilePage({ params }: Props) {
+function ago(d: Date) {
+  const s = (Date.now() - d.getTime()) / 1000;
+  if (s < 3600) return `${Math.max(1, Math.floor(s / 60))}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  if (s < 86400 * 30) return `${Math.floor(s / 86400)}d ago`;
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+export default async function ProfilePage({ params, searchParams }: Props) {
   const { username } = await params;
+  const sp = await searchParams;
   const viewerId = await getUserId();
   const user = await prisma.user.findUnique({
     where: { username },
-    select: { id: true, username: true, avatarColor: true, avatar: true, bio: true, profilePublic: true, createdAt: true, _count: { select: { followers: true, following: true } } },
+    select: {
+      id: true, username: true, avatarColor: true, avatar: true, bio: true, createdAt: true, bannedAt: true,
+      profileVisibility: true, profileSections: true, profileBanner: true, allowFollows: true,
+      _count: { select: { followers: true, following: true, comments: true } },
+    },
   });
-  if (!user) notFound();
+  if (!user || (user.bannedAt && viewerId !== user.id)) notFound();
   const isOwner = viewerId === user.id;
-  if (!user.profilePublic && !isOwner) notFound();
+  // Owners can preview their profile the way visitors see it.
+  const asVisitor = !isOwner || sp.preview === "1";
 
-  const [stats, favorites, watching, completed, lists, reviews, follow, completedIds, listCount] = await Promise.all([
+  const follow = viewerId && !isOwner ? await prisma.follow.findUnique({ where: { followerId_followingId: { followerId: viewerId, followingId: user.id } } }) : null;
+
+  if (!(await canViewProfile(user, viewerId))) {
+    if (user.profileVisibility !== "followers") notFound();
+    return <LockedProfile user={user} loggedIn={!!viewerId} following={!!follow} />;
+  }
+
+  const show: Sections = asVisitor ? parseSections(user.profileSections) : parseSections("{}");
+  const tab = sp.tab === "comments" && show.comments ? "comments" : "overview";
+
+  return (
+    <div className="mx-auto max-w-[1100px] px-4 pt-6 md:px-8 md:pt-8">
+      {isOwner && user.profileVisibility !== "everyone" && !sp.preview && (
+        <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+          <Eye className="h-4 w-4" />
+          {user.profileVisibility === "private" ? "Only you can see this." : "Only your followers can see this."}
+          <Link href="/account/settings#visibility" className="underline">
+            Privacy settings
+          </Link>
+        </div>
+      )}
+      {isOwner && sp.preview === "1" && (
+        <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-fg/80">
+          <Eye className="h-4 w-4" /> This is how visitors see your profile.
+          <Link href={`/u/${user.username}`} className="ml-auto underline">
+            Exit preview
+          </Link>
+        </div>
+      )}
+
+      <header>
+        <div className="relative -mx-4 aspect-[3/1] overflow-hidden bg-white/[0.03] sm:mx-0 sm:aspect-[4/1] sm:rounded-2xl">
+          {user.profileBanner ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={user.profileBanner} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="h-full w-full" style={{ background: `radial-gradient(120% 140% at 15% 0%, ${user.avatarColor}55, transparent 60%), linear-gradient(180deg, rgba(255,255,255,0.03), transparent)` }} />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/10 to-transparent" />
+        </div>
+        <div className="relative -mt-10 flex flex-wrap items-end gap-4 px-1 sm:-mt-12 sm:px-5">
+          <div className="rounded-full ring-4 ring-bg">
+            <Avatar name={user.username} color={user.avatarColor} avatar={user.avatar} size={84} />
+          </div>
+          <div className="min-w-0 flex-1 pb-1">
+            <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-3xl">{user.username}</h1>
+            <p className="mt-1 font-mono text-[11px] text-muted">
+              {show.follows && `${user._count.followers} followers · ${user._count.following} following · `}
+              joined {user.createdAt.toLocaleDateString(undefined, { month: "short", year: "numeric" })}
+            </p>
+          </div>
+          <div className="flex gap-2 pb-1">
+            {isOwner ? (
+              <>
+                {!sp.preview && (
+                  <Link href={`/u/${user.username}?preview=1`} className="btn btn-ghost">
+                    <Eye className="h-4 w-4" /> <span className="hidden sm:inline">View as visitor</span>
+                  </Link>
+                )}
+                <Link href="/account/settings#visibility" className="btn btn-ghost">
+                  Edit profile
+                </Link>
+              </>
+            ) : user.allowFollows || follow ? (
+              <FollowButton username={user.username} initial={!!follow} />
+            ) : null}
+          </div>
+        </div>
+        {user.bio && <p className="mt-3 max-w-xl px-1 text-sm text-fg/75 sm:px-5">{user.bio}</p>}
+      </header>
+
+      {show.comments && (
+        <nav aria-label="Profile" className="mt-6 flex gap-1 border-b border-white/[0.06]">
+          {(
+            [
+              ["overview", "Overview", ""],
+              ["comments", `Comments`, user._count.comments ? String(user._count.comments) : ""],
+            ] as const
+          ).map(([key, label, count]) => {
+            const q = new URLSearchParams();
+            if (key === "comments") q.set("tab", "comments");
+            if (sp.preview === "1") q.set("preview", "1");
+            const active = tab === key;
+            return (
+              <Link
+                key={key}
+                href={`/u/${user.username}${q.size ? `?${q}` : ""}`}
+                aria-current={active ? "page" : undefined}
+                className={`relative flex items-center gap-1.5 px-3 pb-3 pt-1 text-sm transition-colors ${active ? "text-fg" : "text-muted hover:text-fg"}`}
+              >
+                {label}
+                {count && <span className="font-mono text-[11px] text-muted">{count}</span>}
+                {active && <span className="absolute inset-x-0 -bottom-px h-px bg-fg" />}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
+
+      {tab === "comments" ? <CommentHistory userId={user.id} username={user.username} before={sp.before} preview={sp.preview === "1"} /> : <Overview user={user} show={show} />}
+    </div>
+  );
+}
+
+async function Overview({ user, show }: { user: { id: string; username: string; _count: { following: number } }; show: Sections }) {
+  const [stats, favorites, watching, completed, lists, reviews, completedIds, listCount] = await Promise.all([
     getAccountStats(user.id),
-    prisma.favorite.findMany({ where: { userId: user.id }, orderBy: { addedAt: "desc" }, take: 8 }),
-    prisma.listEntry.findMany({ where: { userId: user.id, status: "WATCHING" }, orderBy: { updatedAt: "desc" }, take: 8 }),
-    prisma.listEntry.findMany({ where: { userId: user.id, status: "COMPLETED" }, orderBy: [{ score: "desc" }, { completedAt: "desc" }], take: 16 }),
-    prisma.customList.findMany({ where: { userId: user.id, isPublic: true }, orderBy: { updatedAt: "desc" }, include: { _count: { select: { items: true } }, items: { take: 3, orderBy: { position: "asc" }, select: { coverImage: true } } } }),
-    prisma.review.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 5 }),
-    viewerId && !isOwner ? prisma.follow.findUnique({ where: { followerId_followingId: { followerId: viewerId, followingId: user.id } } }) : null,
+    show.favorites ? prisma.favorite.findMany({ where: { userId: user.id }, orderBy: { addedAt: "desc" }, take: 8 }) : [],
+    show.watching ? prisma.listEntry.findMany({ where: { userId: user.id, status: "WATCHING" }, orderBy: { updatedAt: "desc" }, take: 8 }) : [],
+    show.completed ? prisma.listEntry.findMany({ where: { userId: user.id, status: "COMPLETED" }, orderBy: [{ score: "desc" }, { completedAt: "desc" }], take: 16 }) : [],
+    show.lists
+      ? prisma.customList.findMany({ where: { userId: user.id, isPublic: true }, orderBy: { updatedAt: "desc" }, include: { _count: { select: { items: true } }, items: { take: 3, orderBy: { position: "asc" }, select: { coverImage: true } } } })
+      : [],
+    show.reviews ? prisma.review.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 5 }) : [],
     prisma.listEntry.findMany({ where: { userId: user.id, status: "COMPLETED" }, select: { anilistId: true } }),
     prisma.customList.count({ where: { userId: user.id } }),
   ]);
   const snaps = await getSnapshots([...completedIds.map((c) => c.anilistId), ...reviews.map((r) => r.anilistId)]);
   const longest = Math.max(0, ...completedIds.map((c) => snaps.get(c.anilistId)?.episodes ?? 0));
-  const earned = computeAchievements(stats, { longestCompletedEpisodes: longest, customLists: listCount, following: user._count.following }).filter((a) => a.earned);
+  const earned = show.achievements ? computeAchievements(stats, { longestCompletedEpisodes: longest, customLists: listCount, following: user._count.following }).filter((a) => a.earned) : [];
 
   const tiles: [string, string][] = [
     ["Watch time", formatDuration(stats.secondsWatched)],
@@ -83,40 +207,20 @@ export default async function ProfilePage({ params }: Props) {
     ["Completed", String(stats.showsCompleted)],
     ["Longest streak", `${stats.longestStreak}d`],
   ];
+  const empty = !show.stats && !earned.length && !favorites.length && !watching.length && !completed.length && !lists.length && !reviews.length;
 
   return (
-    <div className="mx-auto max-w-[1100px] px-4 pt-10 md:px-8">
-      {isOwner && !user.profilePublic && (
-        <div className="mb-6 flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
-          <Eye className="h-4 w-4" /> Only you can see this. <Link href="/account/settings#profile" className="underline">Make your profile public</Link> to share it.
+    <>
+      {show.stats && (
+        <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.06] sm:grid-cols-4">
+          {tiles.map(([k, v]) => (
+            <div key={k} className="bg-bg p-4">
+              <div className="text-xl font-semibold tabular-nums">{v}</div>
+              <div className="text-xs text-muted">{k}</div>
+            </div>
+          ))}
         </div>
       )}
-      <header className="flex flex-wrap items-center gap-5">
-        <Avatar name={user.username} color={user.avatarColor} avatar={user.avatar} size={72} />
-        <div className="min-w-0 flex-1">
-          <h1 className="text-3xl font-semibold tracking-tight">{user.username}</h1>
-          {user.bio && <p className="mt-1 max-w-xl text-sm text-fg/75">{user.bio}</p>}
-          <p className="mt-1.5 font-mono text-[11px] text-muted">
-            {user._count.followers} followers · {user._count.following} following · joined {user.createdAt.toLocaleDateString(undefined, { month: "short", year: "numeric" })}
-          </p>
-        </div>
-        {isOwner ? (
-          <Link href="/account/settings#profile" className="btn btn-ghost">
-            Edit profile
-          </Link>
-        ) : (
-          <FollowButton username={user.username} initial={!!follow} />
-        )}
-      </header>
-
-      <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.06] sm:grid-cols-4">
-        {tiles.map(([k, v]) => (
-          <div key={k} className="bg-bg p-4">
-            <div className="text-xl font-semibold tabular-nums">{v}</div>
-            <div className="text-xs text-muted">{k}</div>
-          </div>
-        ))}
-      </div>
 
       {earned.length > 0 && (
         <div className="mt-6 flex flex-wrap gap-1.5">
@@ -129,6 +233,7 @@ export default async function ProfilePage({ params }: Props) {
       )}
 
       <div className="mt-10 space-y-10">
+        {empty && <p className="panel rounded-xl p-8 text-center text-sm text-muted">{user.username} keeps their profile details private.</p>}
         <Shelf title="Watching" items={watching} />
         <Shelf title="Favorites" items={favorites} />
         <Shelf title="Completed" items={completed} />
@@ -186,6 +291,109 @@ export default async function ProfilePage({ params }: Props) {
               })}
             </ul>
           </section>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** Everything they've said in episode and show discussions, newest first. */
+async function CommentHistory({ userId, username, before, preview }: { userId: string; username: string; before?: string; preview: boolean }) {
+  const cursor = before && !Number.isNaN(Date.parse(before)) ? new Date(before) : null;
+  const rows = await prisma.comment.findMany({
+    where: { userId, ...(cursor ? { createdAt: { lt: cursor } } : {}) },
+    orderBy: { createdAt: "desc" },
+    take: PAGE + 1,
+    select: { id: true, anilistId: true, episode: true, body: true, createdAt: true, editedAt: true, parentId: true, _count: { select: { likes: true, replies: true } } },
+  });
+  const more = rows.length > PAGE;
+  const comments = rows.slice(0, PAGE);
+  const snaps = await getSnapshots([...new Set(comments.map((c) => c.anilistId))]);
+
+  if (!comments.length)
+    return <p className="panel mt-8 rounded-xl p-8 text-center text-sm text-muted">{cursor ? "That's everything." : `${username} hasn't commented yet.`}</p>;
+
+  const older = new URLSearchParams({ tab: "comments", before: comments.at(-1)!.createdAt.toISOString() });
+  if (preview) older.set("preview", "1");
+
+  return (
+    <div className="mt-6">
+      <ul className="space-y-3">
+        {comments.map((c) => {
+          const s = snaps.get(c.anilistId);
+          const href = c.episode ? `/watch/${c.anilistId}/${c.episode}#comment-${c.id}` : `/anime/${c.anilistId}#comment-${c.id}`;
+          return (
+            <li key={c.id} className="panel flex gap-3 rounded-xl p-3">
+              <Link href={`/anime/${c.anilistId}`} className="shrink-0">
+                {s ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.coverImage} alt="" className="h-16 w-11 rounded object-cover" />
+                ) : (
+                  <div className="h-16 w-11 rounded bg-white/[0.05]" />
+                )}
+              </Link>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                  <Link href={`/anime/${c.anilistId}`} className="truncate font-medium hover:underline">
+                    {s?.title ?? "Anime"}
+                  </Link>
+                  <Link href={href} className="font-mono text-[11px] text-muted hover:text-fg">
+                    {c.episode ? `Episode ${c.episode}` : "Discussion"}
+                    {c.parentId ? " · reply" : ""} · {ago(c.createdAt)}
+                    {c.editedAt ? " · edited" : ""}
+                  </Link>
+                </div>
+                <SpoilerText text={c.body} className="mt-1 line-clamp-4 text-sm leading-relaxed text-fg/85" />
+                <div className="mt-1.5 flex items-center gap-3 font-mono text-[11px] text-muted">
+                  {c._count.likes > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Heart className="h-3 w-3" /> {c._count.likes}
+                    </span>
+                  )}
+                  {c._count.replies > 0 && (
+                    <span className="flex items-center gap-1">
+                      <MessageSquare className="h-3 w-3" /> {c._count.replies}
+                    </span>
+                  )}
+                  <Link href={href} className="ml-auto hover:text-fg">
+                    View in thread →
+                  </Link>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {more && (
+        <div className="mt-6 text-center">
+          <Link href={`/u/${username}?${older}`} className="btn btn-ghost">
+            Older comments
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LockedProfile({ user, loggedIn, following }: { user: { username: string; avatarColor: string; avatar: string; allowFollows: boolean }; loggedIn: boolean; following: boolean }) {
+  return (
+    <div className="mx-auto max-w-md px-4 pt-20 text-center">
+      <div className="mx-auto w-fit">
+        <Avatar name={user.username} color={user.avatarColor} avatar={user.avatar} size={72} />
+      </div>
+      <h1 className="mt-4 text-2xl font-semibold tracking-tight">{user.username}</h1>
+      <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-muted">
+        <Lock className="h-3.5 w-3.5" /> Only {user.username}&apos;s followers can see this profile.
+      </p>
+      <div className="mt-6">
+        {!loggedIn ? (
+          <Link href={`/login?next=/u/${user.username}`} className="btn btn-primary">
+            Log in to follow
+          </Link>
+        ) : user.allowFollows || following ? (
+          <FollowButton username={user.username} initial={following} />
+        ) : (
+          <p className="text-xs text-muted">They aren&apos;t accepting new followers right now.</p>
         )}
       </div>
     </div>

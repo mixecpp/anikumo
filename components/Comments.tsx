@@ -67,7 +67,7 @@ function Composer({ onSubmit, placeholder, autoFocus, initial = "", onCancel, co
   );
 }
 
-export default function Comments({ anilistId, episode, loggedIn }: { anilistId: number; episode?: number; loggedIn: boolean }) {
+export default function Comments({ anilistId, episode, loggedIn, hideHeading = false }: { anilistId: number; episode?: number; loggedIn: boolean; hideHeading?: boolean }) {
   const [comments, setComments] = useState<C[] | null>(null);
   const [me, setMe] = useState<string | null>(null);
   const [sort, setSort] = useState<"new" | "top">("new");
@@ -164,7 +164,7 @@ export default function Comments({ anilistId, episode, loggedIn }: { anilistId: 
                 <MessageCircle className="h-3.5 w-3.5" /> Reply
               </button>
             )}
-            <span className="ml-auto flex items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+            <span className="ml-auto flex items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
               {mine ? (
                 <>
                   <button onClick={() => setEditing(c.id)} className="rounded p-1 hover:text-fg" aria-label="Edit comment"><Pencil className="h-3.5 w-3.5" /></button>
@@ -183,7 +183,7 @@ export default function Comments({ anilistId, episode, loggedIn }: { anilistId: 
   return (
     <section>
       <div className="flex items-start justify-between gap-3">
-        <SectionHeading title={episode ? `Episode ${episode} discussion` : "Discussion"} count={total} className="flex-1" />
+        {hideHeading ? <div className="flex-1" /> : <SectionHeading title={episode ? `Episode ${episode} discussion` : "Discussion"} count={total} className="flex-1" />}
         <div className="flex rounded-lg bg-white/[0.05] p-0.5 text-xs">
           {(["new", "top"] as const).map((s) => (
             <button key={s} onClick={() => setSort(s)} className={`rounded-md px-2.5 py-1 capitalize transition-colors ${sort === s ? "bg-white/[0.1] text-fg" : "text-muted hover:text-fg"}`}>
