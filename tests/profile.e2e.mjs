@@ -103,6 +103,59 @@ test("profile privacy, banner and comment history", async (t) => {
       assert.ok(isNotFound(await anon("GET", `/u/${A.username}`)));
     });
 
+    await t.test("profile posts, recommendations, likes and comments", async () => {
+      assert.equal((await A.c("PATCH", "/api/account", { profileVisibility: "everyone", profileSections: {}, allowFollows: true, searchable: true })).status, 200);
+      assert.equal((await A.c("POST", "/api/posts", { action: "create", body: "" })).status, 400, "empty posts are refused");
+      assert.equal((await A.c("POST", "/api/posts", { action: "create", body: "x".repeat(501) })).status, 400);
+      const made = await A.c("POST", "/api/posts", { action: "create", body: `you have to watch this ${stamp}`, anilistId: 21, recommend: true });
+      assert.equal(made.status, 200, made.text);
+      const post = made.json.post;
+      assert.equal(post.anime.id, 21);
+      assert.equal(post.anime.recommend, true);
+      assert.ok(post.anime.title.length > 0, "title comes from AniList, not the client");
+
+      const everyone = await anon("GET", "/api/posts?feed=everyone");
+      assert.ok(everyone.json.posts.some((p) => p.id === post.id), "public posts show in Everyone");
+      assert.ok((await anon("GET", `/api/posts?username=${A.username}`)).json.posts.some((p) => p.id === post.id));
+
+      // B follows A: A's post shows in B's Following feed; B likes and comments
+      const followed = await B.c("POST", "/api/follow", { username: A.username });
+      if (followed.json?.following === false) await B.c("POST", "/api/follow", { username: A.username });
+      assert.ok((await B.c("GET", "/api/posts?feed=following")).json.posts.some((p) => p.id === post.id));
+      const like = await B.c("POST", "/api/posts", { action: "like", id: post.id });
+      assert.deepEqual([like.json.liked, like.json.likes], [true, 1]);
+      const comment = await B.c("POST", "/api/posts", { action: "comment", id: post.id, body: "adding it to my list" });
+      assert.equal(comment.status, 200);
+      const note = await prisma.notification.findFirst({ where: { userId: A.id, title: { contains: "commented on your post" } } });
+      assert.ok(note, "the author is notified");
+      const thread = await anon("GET", `/api/posts?id=${post.id}`);
+      assert.equal(thread.json.comments.length, 1);
+      assert.equal(thread.json.post.comments, 1);
+      assert.equal(thread.json.comments[0].canDelete, false);
+      assert.equal((await anon("POST", "/api/posts", { action: "comment", id: post.id, body: "hi" })).status, 401);
+      // the post owner can remove comments on their post; nobody else can delete the post
+      assert.equal((await B.c("POST", "/api/posts", { action: "delete", id: post.id })).status, 404);
+      assert.equal((await A.c("POST", "/api/posts", { action: "deleteComment", id: comment.json.comment.id })).status, 200);
+
+      // privacy: followers-only hides posts from strangers; the Posts switch hides them from everyone else
+      assert.equal((await A.c("PATCH", "/api/account", { profileVisibility: "followers" })).status, 200);
+      assert.equal((await anon("GET", `/api/posts?username=${A.username}`)).status, 404);
+      assert.ok(!(await anon("GET", "/api/posts?feed=everyone")).json.posts.some((p) => p.id === post.id));
+      assert.equal((await B.c("GET", `/api/posts?username=${A.username}`)).status, 200, "followers still see them");
+      assert.equal((await A.c("PATCH", "/api/account", { profileSections: { posts: false } })).status, 200);
+      assert.equal((await B.c("GET", `/api/posts?username=${A.username}`)).status, 404);
+      assert.equal((await A.c("GET", `/api/posts?username=${A.username}`)).status, 200, "you always see your own");
+      assert.equal((await A.c("POST", "/api/posts", { action: "delete", id: post.id })).status, 200);
+      assert.equal((await A.c("PATCH", "/api/account", { profileVisibility: "everyone", profileSections: {} })).status, 200);
+      for (const p of ["/feed", "/feed?tab=everyone", `/u/${A.username}?tab=posts`]) assert.equal((await B.c("GET", p)).status, 200, p);
+    });
+
+    await t.test("member search", async () => {
+      const r = await anon("GET", `/api/search?q=@${A.username.slice(0, 4)}`);
+      assert.equal(r.json.groups[0]?.kind, "user");
+      assert.ok(r.json.groups[0].items.some((i) => i.title === A.username));
+    });
+
     await t.test("removing a show from history sticks", async () => {
       const t0 = Date.now();
       const save = (sampledAt, extra = {}) => B.c("POST", "/api/progress", { anilistId: 21, episode: 3, progressSeconds: 120, durationSeconds: 1400, sampledAt, title: "One Piece", coverImage: "", ...extra });

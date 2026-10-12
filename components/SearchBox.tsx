@@ -177,7 +177,7 @@ export default function SearchBox() {
               inputRef.current?.blur();
             }
           }}
-          placeholder="Search anime, characters, people…"
+          placeholder="Search anime, characters, members…"
           className="input !py-2 !pl-9 !pr-12 text-sm [&::-webkit-search-cancel-button]:hidden"
           aria-label="Search anime, characters, people and studios"
           autoComplete="off"

@@ -15,7 +15,8 @@ export default function MobileNav({ libraryEnabled, user, latestChangelog }: { l
   const pathname = usePathname();
   const t = useT();
   const unseen = useChangelogUnseen(latestChangelog);
-  const links = navLinks(libraryEnabled).filter((l) => l.icon !== "charts" && l.icon !== "library");
+  // Five slots: Home, Browse, Seasonal, Feed and Account (Schedule and Charts live on the home page and menus).
+  const links = navLinks(libraryEnabled).filter((l) => l.icon !== "charts" && l.icon !== "library" && l.icon !== "schedule");
   const accountHref = user ? "/account" : "/login";
   const accountActive = isActive(pathname, "/account") || isActive(pathname, "/login") || isActive(pathname, "/register");
   const item = (active: boolean) => `press flex flex-1 flex-col items-center gap-1 py-1 text-[10px] font-medium transition-colors ${active ? "text-fg" : "text-muted"}`;

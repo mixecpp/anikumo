@@ -14,6 +14,7 @@ import { canViewProfile, parseSections, type Sections } from "@/lib/privacy";
 import { Avatar } from "@/components/UserMenu";
 import FollowButton from "@/components/FollowButton";
 import SpoilerText from "@/components/SpoilerText";
+import PostFeed from "@/components/posts/Posts";
 
 type Props = { params: Promise<{ username: string }>; searchParams: Promise<{ tab?: string; before?: string; preview?: string }> };
 
@@ -72,7 +73,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
     select: {
       id: true, username: true, avatarColor: true, avatar: true, bio: true, createdAt: true, bannedAt: true,
       profileVisibility: true, profileSections: true, profileBanner: true, allowFollows: true,
-      _count: { select: { followers: true, following: true, comments: true } },
+      _count: { select: { followers: true, following: true, comments: true, posts: true } },
     },
   });
   if (!user || (user.bannedAt && viewerId !== user.id)) notFound();
@@ -88,7 +89,12 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   }
 
   const show: Sections = asVisitor ? parseSections(user.profileSections) : parseSections("{}");
-  const tab = sp.tab === "comments" && show.comments ? "comments" : "overview";
+  const tab = sp.tab === "comments" && show.comments ? "comments" : sp.tab === "posts" && show.posts ? "posts" : "overview";
+  const tabs = [
+    ["overview", "Overview", ""],
+    ...(show.posts ? [["posts", "Posts", user._count.posts ? String(user._count.posts) : ""]] : []),
+    ...(show.comments ? [["comments", "Comments", user._count.comments ? String(user._count.comments) : ""]] : []),
+  ] as [string, string, string][];
 
   return (
     <div className="mx-auto max-w-[1100px] px-4 pt-6 md:px-8 md:pt-8">
@@ -151,16 +157,11 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         {user.bio && <p className="mt-3 max-w-xl px-1 text-sm text-fg/75 sm:px-5">{user.bio}</p>}
       </header>
 
-      {show.comments && (
+      {tabs.length > 1 && (
         <nav aria-label="Profile" className="mt-6 flex gap-1 border-b border-white/[0.06]">
-          {(
-            [
-              ["overview", "Overview", ""],
-              ["comments", `Comments`, user._count.comments ? String(user._count.comments) : ""],
-            ] as const
-          ).map(([key, label, count]) => {
+          {tabs.map(([key, label, count]) => {
             const q = new URLSearchParams();
-            if (key === "comments") q.set("tab", "comments");
+            if (key !== "overview") q.set("tab", key);
             if (sp.preview === "1") q.set("preview", "1");
             const active = tab === key;
             return (
@@ -179,7 +180,15 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         </nav>
       )}
 
-      {tab === "comments" ? <CommentHistory userId={user.id} username={user.username} before={sp.before} preview={sp.preview === "1"} /> : <Overview user={user} show={show} />}
+      {tab === "comments" ? (
+        <CommentHistory userId={user.id} username={user.username} before={sp.before} preview={sp.preview === "1"} />
+      ) : tab === "posts" ? (
+        <div className="mx-auto mt-6 max-w-2xl">
+          <PostFeed source={{ username: user.username }} canPost={isOwner && sp.preview !== "1"} empty={isOwner ? "Share what you're watching, or recommend a show to your followers." : `${user.username} hasn't posted yet.`} />
+        </div>
+      ) : (
+        <Overview user={user} show={show} />
+      )}
     </div>
   );
 }

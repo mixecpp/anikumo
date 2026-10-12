@@ -11,6 +11,7 @@ export const VISIBILITIES: { value: Visibility; label: string; hint: string }[] 
 ];
 
 export const SECTIONS = {
+  posts: "Posts",
   stats: "Stats (watch time, episodes, streaks)",
   achievements: "Achievements",
   watching: "Currently watching",

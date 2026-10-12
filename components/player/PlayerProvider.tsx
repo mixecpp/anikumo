@@ -291,6 +291,21 @@ function useEpisodeProgress(session: PlayerSession) {
   return pct;
 }
 
+/** While the window is dragged or resized, nothing on the page can get selected. Returns the undo. */
+function lockSelection() {
+  const root = document.documentElement;
+  window.getSelection()?.removeAllRanges();
+  root.style.setProperty("user-select", "none");
+  root.style.setProperty("-webkit-user-select", "none");
+  const block = (ev: Event) => ev.preventDefault();
+  document.addEventListener("selectstart", block);
+  return () => {
+    root.style.removeProperty("user-select");
+    root.style.removeProperty("-webkit-user-select");
+    document.removeEventListener("selectstart", block);
+  };
+}
+
 type Corner = "tl" | "tr" | "bl" | "br";
 const STORE = "ak_pip";
 const MARGIN = 24;
@@ -356,6 +371,9 @@ function useFloatingWindow(enabled: boolean) {
 
   const startMove = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
+    // Stops the browser starting a text selection from this press.
+    e.preventDefault();
+    const unlock = lockSelection();
     const sx = e.clientX;
     const sy = e.clientY;
     // Keep the window on screen while it's dragged.
@@ -383,6 +401,8 @@ function useFloatingWindow(enabled: boolean) {
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      unlock();
       if (frame) cancelAnimationFrame(frame);
       if (!moved) return;
       setDragging(false);
@@ -402,6 +422,7 @@ function useFloatingWindow(enabled: boolean) {
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   };
 
   // Stop the glide transition once it has finished so later layout changes don't animate.
@@ -415,6 +436,7 @@ function useFloatingWindow(enabled: boolean) {
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
+    const unlock = lockSelection();
     const startX = e.clientX;
     const grow = corner[1] === "r" ? -1 : 1; // the handle is on the side facing the middle
     setResizing(true);
@@ -431,12 +453,15 @@ function useFloatingWindow(enabled: boolean) {
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      unlock();
       if (frame) cancelAnimationFrame(frame);
       setResizing(false);
       save({ corner, width: latest });
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   };
 
   return {

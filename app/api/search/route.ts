@@ -9,19 +9,32 @@ export type SearchGroup = { kind: SearchItem["kind"]; label: string; items: Sear
 
 const FORMAT: Record<string, string> = { TV: "TV", TV_SHORT: "TV short", MOVIE: "Movie", SPECIAL: "Special", OVA: "OVA", ONA: "ONA", MUSIC: "Music" };
 
-/** GET ?q= → grouped results: anime, characters, people (staff), studios, public profiles. */
+/**
+ * GET ?q= → grouped results: anime, characters, people (staff), studios, public profiles.
+ * Members match anywhere in the username; "@name" searches put members first.
+ */
 export async function GET(req: Request) {
   const q = new URL(req.url).searchParams.get("q")?.trim().slice(0, 100) ?? "";
   if (q.length < 2) return NextResponse.json({ groups: [], results: [] });
   if (!rateLimit(`search:${clientIp(req.headers)}`, 60, 60_000).ok) return NextResponse.json({ groups: [], error: "Slow down a little" }, { status: 429 });
 
-  const [hits, users, prefs] = await Promise.all([
-    searchEverything(q).catch(() => null),
-    /^[a-zA-Z0-9_]+$/.test(q)
-      ? prisma.user.findMany({ where: { profilePublic: true, searchable: true, bannedAt: null, username: { startsWith: q } }, select: { username: true, avatarColor: true, avatar: true }, take: 3 })
+  const atSearch = q.startsWith("@");
+  const handle = q.replace(/^@/, "");
+  const userQuery = /^[a-zA-Z0-9_]{1,20}$/.test(handle) ? handle.toLowerCase() : null;
+  const [hits, userRows, prefs] = await Promise.all([
+    atSearch ? Promise.resolve(null) : searchEverything(q).catch(() => null),
+    userQuery
+      ? prisma.user.findMany({
+          where: { profilePublic: true, searchable: true, bannedAt: null, username: { contains: userQuery } },
+          select: { username: true, avatarColor: true, avatar: true, bio: true, _count: { select: { followers: true } } },
+          take: 20,
+        })
       : [],
     getPrefs(),
   ]);
+  // Exact name first, then names starting with it, then the most-followed.
+  const rank = (u: string) => (u.toLowerCase() === userQuery ? 0 : u.toLowerCase().startsWith(userQuery ?? "") ? 1 : 2);
+  const users = [...userRows].sort((a, b) => rank(a.username) - rank(b.username) || b._count.followers - a._count.followers).slice(0, atSearch ? 8 : 4);
   const lang = prefs.titleLang;
 
   const groups: SearchGroup[] = [];
@@ -51,14 +64,25 @@ export async function GET(req: Request) {
     });
   if (hits?.studios.length)
     groups.push({ kind: "studio", label: "Studios", items: hits.studios.map((st) => ({ kind: "studio", href: `/studio/${st.id}`, title: st.name, subtitle: "Animation studio", image: null })) });
-  if (users.length)
-    groups.push({
+  if (users.length) {
+    const members: SearchGroup = {
       kind: "user",
       label: "Members",
-      items: users.map((u) => ({ kind: "user", href: `/u/${u.username}`, title: u.username, subtitle: "Profile", image: null, avatar: { color: u.avatarColor, value: u.avatar } })),
-    });
+      items: users.map((u) => ({
+        kind: "user",
+        href: `/u/${u.username}`,
+        title: u.username,
+        subtitle: u.bio ? u.bio.slice(0, 80) : `${u._count.followers} follower${u._count.followers === 1 ? "" : "s"}`,
+        image: null,
+        avatar: { color: u.avatarColor, value: u.avatar },
+      })),
+    };
+    // Looking for a person ("@name" or their exact username): show them before the anime.
+    if (atSearch || users[0].username.toLowerCase() === userQuery) groups.unshift(members);
+    else groups.push(members);
+  }
 
   // Flat anime list in the older shape, used by the command palette and compare picker.
   const results = (hits?.anime ?? []).map((m) => ({ id: m.id, title: titleOf(m, lang), cover: m.coverImage.large, year: m.seasonYear, format: m.format, episodes: m.episodes }));
-  return NextResponse.json({ groups, results, error: hits ? undefined : "Search is having trouble — try again" }, { headers: { "Cache-Control": "private, max-age=60" } });
+  return NextResponse.json({ groups, results, error: hits || atSearch ? undefined : "Search is having trouble — try again" }, { headers: { "Cache-Control": "private, max-age=60" } });
 }
