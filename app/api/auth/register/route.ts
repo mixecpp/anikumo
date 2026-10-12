@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   if (!limit.ok) return fail(`Too many sign-ups from this network. Try again in ${Math.ceil(limit.retryAfter / 60)} min.`, 429);
 
   const body = await readJson<{ username: string; password: string }>(req);
-  if (!(await verifyCaptcha((body as { captcha?: unknown }).captcha, clientIp(req.headers)))) return fail("The human check didn't pass — try again", 400);
+  if (!(await verifyCaptcha((body as { captcha?: unknown }).captcha, clientIp(req.headers), "register"))) return fail("The human check didn't pass — try again", 400);
   const username = String(body.username ?? "").trim();
   const password = String(body.password ?? "");
 

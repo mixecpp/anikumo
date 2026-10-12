@@ -168,12 +168,25 @@ export default function AuthForm({ mode, covers, captchaKey }: { mode: "login" |
                 </label>
                 {mode === "register" && <Field label="Confirm password" name="confirm" type={show ? "text" : "password"} autoComplete="new-password" minLength={8} />}
 
-                {captchaKey && <Turnstile siteKey={captchaKey} onToken={setCaptcha} nonce={captchaNonce} />}
+                {captchaKey && <Turnstile siteKey={captchaKey} action={mode} onToken={setCaptcha} nonce={captchaNonce} />}
                 {error && <ErrorBox text={error} />}
                 <button disabled={busy || (!!captchaKey && !captcha)} className="btn btn-primary w-full !py-2.5">
                   {busy && <LoaderCircle className="spin h-4 w-4" />}
                   {captchaKey && !captcha && !busy ? "Checking your browser…" : mode === "login" ? "Log in" : "Create account"}
                 </button>
+                {mode === "register" && (
+                  <p className="text-center text-[11px] leading-relaxed text-muted">
+                    By creating an account you agree to the{" "}
+                    <Link href="/rules" className="text-fg/80 underline-offset-2 hover:underline">
+                      rules
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/privacy" className="text-fg/80 underline-offset-2 hover:underline">
+                      privacy policy
+                    </Link>
+                    .
+                  </p>
+                )}
               </form>
 
               <p className="mt-8 text-sm text-muted">

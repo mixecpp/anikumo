@@ -79,7 +79,7 @@ export function ForgotForm({ captchaKey }: { captchaKey: string | null }) {
         />
         <input type="password" required minLength={8} value={form.password} onChange={set("password")} placeholder="New password (8+ characters)" className="input text-sm" aria-label="New password" autoComplete="new-password" />
         <input type="password" required value={form.confirm} onChange={set("confirm")} placeholder="Confirm new password" className="input text-sm" aria-label="Confirm password" autoComplete="new-password" />
-        {captchaKey && <Turnstile siteKey={captchaKey} onToken={setCaptcha} nonce={captchaNonce} />}
+        {captchaKey && <Turnstile siteKey={captchaKey} action="forgot" onToken={setCaptcha} nonce={captchaNonce} />}
         {error && <p className="text-sm text-red-300">{error}</p>}
         <button disabled={busy || (!!captchaKey && !captcha)} className="btn btn-primary w-full">
           {busy && <LoaderCircle className="spin h-4 w-4" />} Reset password

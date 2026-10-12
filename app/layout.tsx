@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { Send } from "lucide-react";
+import { TELEGRAM_URL } from "@/components/TelegramCard";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
@@ -82,6 +84,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     <Link href="/trailers" className="hover:text-fg">Trailers</Link>
                     <Link href="/compare" className="hover:text-fg">Compare</Link>
                     <Link href="/changelog" className="hover:text-fg">What&apos;s new</Link>
+                    <Link href="/rules" className="hover:text-fg">Rules</Link>
+                    <Link href="/privacy" className="hover:text-fg">Privacy</Link>
+                    <a href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#229ED9]/90 hover:text-[#229ED9]">
+                      <Send className="h-3 w-3" /> Telegram
+                    </a>
                     <ShortcutsButton />
                   </nav>
                   <span>

@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const wait = Math.max(ipLimit.retryAfter, acctLimit.retryAfter);
     return fail(`Too many attempts. Try again in ${Math.ceil(wait / 60)} min.`, 429);
   }
-  if (!(await verifyCaptcha((body as { captcha?: unknown }).captcha, clientIp(req.headers)))) return fail("The human check didn't pass — try again", 400);
+  if (!(await verifyCaptcha((body as { captcha?: unknown }).captcha, clientIp(req.headers), "login"))) return fail("The human check didn't pass — try again", 400);
 
   const user = await prisma.user.findUnique({ where: { username: login } });
   const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);

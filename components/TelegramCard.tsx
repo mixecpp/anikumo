@@ -2,6 +2,27 @@ import { ArrowUpRight, Send } from "lucide-react";
 
 export const TELEGRAM_URL = "https://t.me/animekumo";
 
+/** A small one-line Telegram invite for sidebars and page headers. */
+export function TelegramLink({ text = "Get updates and talk to us on Telegram", className = "" }: { text?: string; className?: string }) {
+  return (
+    <a
+      href={TELEGRAM_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`panel group flex items-center gap-3 rounded-xl p-3 text-sm transition-colors hover:border-white/15 ${className}`}
+    >
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#229ED9]/15 text-[#229ED9]">
+        <Send className="h-4 w-4 -translate-x-px translate-y-px" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium">@animekumo</span>
+        <span className="block text-xs text-muted">{text}</span>
+      </span>
+      <ArrowUpRight className="h-4 w-4 shrink-0 text-muted transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-fg" />
+    </a>
+  );
+}
+
 /** Front-page invite to the AniKumo Telegram: updates and a way to reach us off the site. */
 export default function TelegramCard() {
   return (
