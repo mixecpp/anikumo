@@ -129,6 +129,7 @@ export async function POST(req: Request) {
       await prisma.$transaction([
         prisma.watchTime.deleteMany({ where: { userId: user.id } }),
         prisma.watchCursor.deleteMany({ where: { userId: user.id } }),
+        prisma.historyCutoff.deleteMany({ where: { userId: user.id } }),
         prisma.user.delete({ where: { id: user.id } }),
       ]);
       await log("Deleted user", user.username);

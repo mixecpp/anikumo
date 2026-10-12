@@ -9,6 +9,18 @@ import type { HistoryEvent, HistoryShow } from "@/lib/account";
 import { toast, undoable } from "@/lib/toast";
 import ConfirmButton from "./ConfirmButton";
 
+/** Drops progress saves still queued in this browser (see useWatchProgress) so they can't bring a removed show back. */
+function forgetQueued(anilistId?: number) {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("aw_pending_progress:") && (anilistId === undefined || key.split(":")[2] === String(anilistId))) keys.push(key);
+    }
+    keys.forEach((k) => localStorage.removeItem(k));
+  } catch {}
+}
+
 function relative(iso: string) {
   const d = new Date(iso);
   const days = Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86_400_000);
@@ -44,7 +56,10 @@ export default function HistoryView({ shows: initialShows, events: initialEvents
     setShows((s) => s.filter((x) => x.anilistId !== anilistId));
     setEvents((e) => e.filter((x) => x.anilistId !== anilistId));
     undoable(`Removed ${title} from history`, {
-      commit: () => fetch(`/api/progress?anilistId=${anilistId}`, { method: "DELETE" }).then(() => router.refresh()),
+      commit: () => {
+        forgetQueued(anilistId);
+        return fetch(`/api/progress?anilistId=${anilistId}&before=${Date.now()}`, { method: "DELETE" }).then(() => router.refresh());
+      },
       revert: () => {
         setShows(prevShows);
         setEvents(prevEvents);
@@ -53,7 +68,8 @@ export default function HistoryView({ shows: initialShows, events: initialEvents
   }
 
   async function clearAll() {
-    const res = await fetch("/api/progress?all=1", { method: "DELETE" });
+    forgetQueued();
+    const res = await fetch(`/api/progress?all=1&before=${Date.now()}`, { method: "DELETE" });
     if (!res.ok) return toast("Couldn't clear history", "error");
     setShows([]);
     setEvents([]);

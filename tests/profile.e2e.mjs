@@ -103,6 +103,24 @@ test("profile privacy, banner and comment history", async (t) => {
       assert.ok(isNotFound(await anon("GET", `/u/${A.username}`)));
     });
 
+    await t.test("removing a show from history sticks", async () => {
+      const t0 = Date.now();
+      const save = (sampledAt, extra = {}) => B.c("POST", "/api/progress", { anilistId: 21, episode: 3, progressSeconds: 120, durationSeconds: 1400, sampledAt, title: "One Piece", coverImage: "", ...extra });
+      assert.equal((await save(t0)).json.saved, true);
+      assert.equal((await B.c("DELETE", `/api/progress?anilistId=21&before=${t0 + 50}`)).status, 200);
+      // An old save still queued in the browser (or a late beacon) must not bring it back.
+      const stale = await save(t0 + 10, { progressSeconds: 200 });
+      assert.equal(stale.json.saved, false);
+      assert.deepEqual((await B.c("GET", "/api/progress?anilistId=21")).json.progress, []);
+      assert.doesNotMatch((await B.c("GET", "/account/history")).text, /One Piece/);
+      // Watching it again afterwards works as normal.
+      assert.equal((await save(t0 + 100)).json.saved, true);
+      // Clear all history: same rule for every show.
+      assert.equal((await B.c("DELETE", `/api/progress?all=1&before=${t0 + 200}`)).status, 200);
+      assert.equal((await B.c("POST", "/api/progress", { anilistId: 1535, episode: 1, progressSeconds: 60, durationSeconds: 1400, sampledAt: t0 + 150, title: "Death Note", coverImage: "" })).json.saved, false);
+      assert.equal((await save(t0 + 300)).json.saved, true);
+    });
+
     await t.test("pages render", async () => {
       for (const p of ["/account/settings", "/watch/21/1", "/", `/u/${A.username}`]) assert.equal((await A.c("GET", p)).status, 200, p);
       const banners = await anon("GET", "/api/banners?q=one%20piece");
@@ -111,6 +129,10 @@ test("profile privacy, banner and comment history", async (t) => {
     });
   } finally {
     await prisma.comment.deleteMany({ where: { userId: { in: ids } } });
+    await prisma.watchProgress.deleteMany({ where: { userId: { in: ids } } });
+    await prisma.watchCursor.deleteMany({ where: { userId: { in: ids } } });
+    await prisma.watchTime.deleteMany({ where: { userId: { in: ids } } });
+    await prisma.historyCutoff.deleteMany({ where: { userId: { in: ids } } });
     await prisma.user.deleteMany({ where: { id: { in: ids } } });
     await prisma.$disconnect();
   }

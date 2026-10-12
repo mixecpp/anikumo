@@ -1,30 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Maximize2, SkipForward, X } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Maximize2, PictureInPicture2, SkipForward, X } from "lucide-react";
 import WatchClient from "../WatchClient";
+import { PlayerContext, type PlayerSession } from "./context";
 
-export type WatchProps = React.ComponentProps<typeof WatchClient>;
-export type PlayerSession = { props: WatchProps; href: string; title: string; image: string };
-
-type Ctx = {
-  /** Called by the watch page's slot: start (or keep) playing this episode. */
-  open: (s: PlayerSession) => void;
-  /** The watch page's placeholder element, or null when the page is left. */
-  attach: (el: HTMLElement | null) => void;
-  /** Height the player needs in the page (video + its control bar). */
-  height: number;
-  /** Phones: is the player pinned to the top of the screen right now? */
-  stuck: boolean;
-};
-const PlayerContext = createContext<Ctx | null>(null);
-
-export function usePlayer() {
-  const ctx = useContext(PlayerContext);
-  if (!ctx) throw new Error("usePlayer needs <PlayerProvider>");
-  return ctx;
-}
+export { usePlayer, type PlayerSession, type WatchProps } from "./context";
 
 const sessionKey = (s: PlayerSession) => `${s.props.userId}:${s.props.anilistId}:${s.props.episode}`;
 const PHONE = "(max-width: 767px)";
@@ -49,7 +31,7 @@ function useMedia(query: string) {
  * lives here, in the root layout, and is only ever repositioned:
  *  - inline:  laid over the watch page's slot (scrolls with the page)
  *  - stuck:   phones, pinned to the top once you scroll past it, so comments scroll underneath
- *  - float:   desktop, a corner window once you scroll down the watch page
+ *  - float:   desktop, popped out into a corner window with the pop-out button
  *  - mini:    any other page, a small player you can keep watching while you browse
  * WatchClient itself is unchanged; it simply stays mounted.
  */
@@ -58,6 +40,7 @@ export default function PlayerProvider({ children }: { children: React.ReactNode
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const [height, setHeight] = useState(0);
   const [stuck, setStuck] = useState(false);
+  const [popped, setPopped] = useState(false);
   const detachTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const open = useCallback((s: PlayerSession) => {
@@ -73,31 +56,52 @@ export default function PlayerProvider({ children }: { children: React.ReactNode
     else detachTimer.current = setTimeout(() => setSlot(null), 250);
   }, []);
 
-  const value = useMemo(() => ({ open, attach, height, stuck }), [open, attach, height, stuck]);
+  const close = useCallback(() => {
+    setSession(null);
+    setPopped(false);
+  }, []);
+
+  const value = useMemo(() => ({ open, attach, height, stuck, popped, setPopped }), [open, attach, height, stuck, popped]);
 
   return (
     <PlayerContext.Provider value={value}>
       {children}
-      {session && <PlayerHost session={session} slot={slot} onHeight={setHeight} onStuck={setStuck} onClose={() => setSession(null)} />}
+      {session && <PlayerHost session={session} slot={slot} popped={popped} onUnpop={() => setPopped(false)} onHeight={setHeight} onStuck={setStuck} onClose={close} />}
     </PlayerContext.Provider>
   );
 }
 
 type Mode = "inline" | "stuck" | "float" | "mini";
 
-function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: PlayerSession; slot: HTMLElement | null; onHeight: (h: number) => void; onStuck: (s: boolean) => void; onClose: () => void }) {
+function PlayerHost({
+  session,
+  slot,
+  popped,
+  onUnpop,
+  onHeight,
+  onStuck,
+  onClose,
+}: {
+  session: PlayerSession;
+  slot: HTMLElement | null;
+  popped: boolean;
+  onUnpop: () => void;
+  onHeight: (h: number) => void;
+  onStuck: (s: boolean) => void;
+  onClose: () => void;
+}) {
   const router = useRouter();
   const phone = useMedia(PHONE);
   const outer = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
-  const [scrolledPast, setScrolledPast] = useState(false);
-  const [floatDismissed, setFloatDismissed] = useState(false);
+  const [pinned, setPinned] = useState(false);
 
-  // Track where the slot is (document coordinates) and whether it has scrolled out of view.
+  // Where the slot is (document coordinates). Scrolling only matters on phones, where the player
+  // pins to the top; on desktop nothing runs while you scroll.
   useLayoutEffect(() => {
     if (!slot) {
       setPos(null);
-      setScrolledPast(false);
+      setPinned(false);
       return;
     }
     let frame = 0;
@@ -106,8 +110,7 @@ function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: Pl
       const r = slot.getBoundingClientRect();
       const next = { top: Math.round(r.top + window.scrollY), left: Math.round(r.left + window.scrollX), width: Math.round(r.width) };
       setPos((p) => (p && p.top === next.top && p.left === next.left && p.width === next.width ? p : next));
-      // Phones pin as soon as the top of the video reaches the top; desktop floats once most of it is gone.
-      setScrolledPast(phone ? r.top < 1 : r.bottom < Math.min(r.height * 0.35, 220));
+      if (phone) setPinned(r.top < 1);
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure);
@@ -118,7 +121,7 @@ function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: Pl
     const ro = new ResizeObserver(schedule);
     ro.observe(slot);
     ro.observe(document.body);
-    window.addEventListener("scroll", schedule, { passive: true });
+    if (phone) window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
     return () => {
       clearTimeout(settle);
@@ -129,10 +132,7 @@ function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: Pl
     };
   }, [slot, phone]);
 
-  // A new episode shouldn't inherit "I closed the floating player".
-  useEffect(() => setFloatDismissed(false), [session]);
-
-  const mode: Mode = !slot ? "mini" : scrolledPast ? (phone ? "stuck" : floatDismissed ? "inline" : "float") : "inline";
+  const mode: Mode = !slot ? "mini" : phone ? (pinned ? "stuck" : "inline") : popped ? "float" : "inline";
 
   useEffect(() => onStuck(mode === "stuck"), [mode, onStuck]);
 
@@ -158,8 +158,11 @@ function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: Pl
     return () => document.documentElement.removeAttribute("data-floating-player");
   }, [compact, phone, win.corner]);
 
-  const back = () => (mode === "float" ? slot?.scrollIntoView({ behavior: "smooth", block: "center" }) : router.push(session.href));
-  const close = () => (mode === "float" ? setFloatDismissed(true) : onClose());
+  const putBack = () => {
+    onUnpop();
+    slot?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+  const open = () => router.push(session.href);
   const next = session.props.nextEpisode ? `/watch/${session.props.anilistId}/${session.props.nextEpisode}` : null;
 
   const phoneWidth = 128;
@@ -172,7 +175,7 @@ function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: Pl
         ? { position: "fixed", top: 0, left: 0, right: 0, paddingTop: "env(safe-area-inset-top)", background: "#000" }
         : phone
           ? { position: "fixed", left: 8, right: 8, bottom: "calc(max(env(safe-area-inset-bottom), 0.4rem) + 4rem)" }
-          : { position: "fixed", left: win.left, top: win.top, width: win.width };
+          : { position: "fixed", left: win.left, top: win.top, width: win.width, transform: win.transform, willChange: "transform" };
 
   // In every mode but inline only the video shows; the control bar under it is clipped away.
   const videoWidth = desktopWindow ? win.width : compact ? phoneWidth : undefined;
@@ -186,27 +189,27 @@ function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: Pl
       className={[
         "z-[45]",
         mode === "inline" ? "" : "[&_.aspect-video]:!rounded-none",
-        compact ? "overflow-hidden rounded-xl bg-panel/95 shadow-2xl shadow-black/60 ring-1 ring-white/10" : "",
-        compact && phone ? "flex items-center gap-3 pr-1.5 backdrop-blur-xl" : "",
-        desktopWindow ? "group/pip animate-[pip-in_0.22s_ease-out]" : "",
-        desktopWindow && win.settled && !win.active ? "transition-[left,top] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" : "",
+        compact ? "overflow-hidden rounded-xl bg-panel shadow-xl shadow-black/50 ring-1 ring-white/10" : "",
+        compact && phone ? "flex items-center gap-3 pr-1.5" : "",
+        desktopWindow ? "group/pip animate-[pip-in_0.2s_ease-out]" : "",
+        win.gliding ? "transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" : "",
         win.active ? "select-none [&_iframe]:pointer-events-none" : "",
       ].join(" ")}
     >
       <div className="relative shrink-0 overflow-hidden" style={{ width: videoWidth, height: clipHeight }}>
         <WatchClient {...session.props} />
         {/* On a phone the mini player is too small to use the embed's own controls: tap to go back. */}
-        {compact && phone && <button onClick={() => router.push(session.href)} className="absolute inset-0" aria-label={`Open ${session.title}`} />}
+        {compact && phone && <button onClick={open} className="absolute inset-0" aria-label={`Open ${session.title}`} />}
       </div>
 
       {compact && phone && (
         <div className="flex min-w-0 flex-1 items-center gap-1">
-          <button onClick={back} className="min-w-0 flex-1 text-left">
+          <button onClick={open} className="min-w-0 flex-1 text-left">
             <div className="truncate text-[13px] font-medium">{session.title}</div>
             <div className="font-mono text-[11px] text-muted">Episode {session.props.episode}</div>
           </button>
-          <IconButton onClick={back} label="Open the watch page" icon={Maximize2} />
-          <IconButton onClick={close} label="Close the player" icon={X} />
+          <IconButton onClick={open} label="Open the watch page" icon={Maximize2} />
+          <IconButton onClick={onClose} label="Close the player" icon={X} />
         </div>
       )}
 
@@ -215,8 +218,8 @@ function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: Pl
           {/* Hover controls over the top of the video; the strip doubles as the drag handle. */}
           <div
             onPointerDown={win.startMove}
-            onDoubleClick={back}
-            className={`absolute inset-x-0 top-0 flex cursor-grab items-center gap-1 bg-gradient-to-b from-black/80 via-black/40 to-transparent px-3 pb-6 pt-2 text-white transition-opacity duration-200 active:cursor-grabbing ${
+            onDoubleClick={mode === "float" ? putBack : open}
+            className={`absolute inset-x-0 top-0 flex cursor-grab items-center gap-1 bg-gradient-to-b from-black/80 via-black/40 to-transparent px-3 pb-6 pt-2 text-white transition-opacity duration-150 active:cursor-grabbing ${
               win.active || win.peek ? "opacity-100" : "opacity-0 focus-within:opacity-100 group-hover/pip:opacity-100"
             }`}
           >
@@ -225,8 +228,14 @@ function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: Pl
               <div className="font-mono text-[11px] text-white/70">Episode {session.props.episode}</div>
             </div>
             {next && <IconButton onClick={() => router.push(next)} label={`Episode ${session.props.nextEpisode}`} icon={SkipForward} light />}
-            <IconButton onClick={back} label={mode === "float" ? "Back to the player" : "Open the watch page"} icon={Maximize2} light />
-            <IconButton onClick={close} label={mode === "float" ? "Stop floating" : "Close the player"} icon={X} light />
+            {mode === "float" ? (
+              <IconButton onClick={putBack} label="Put the player back" icon={PictureInPicture2} light />
+            ) : (
+              <>
+                <IconButton onClick={open} label="Open the watch page" icon={Maximize2} light />
+                <IconButton onClick={onClose} label="Close the player" icon={X} light />
+              </>
+            )}
           </div>
 
           {progress > 0 && (
@@ -256,6 +265,7 @@ function IconButton({ onClick, label, icon: Icon, light }: { onClick: () => void
     <button
       onClick={onClick}
       onPointerDown={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
       className={`shrink-0 rounded-lg p-2 transition-colors ${light ? "text-white/85 hover:bg-white/15 hover:text-white" : "text-muted hover:bg-white/[0.06] hover:text-fg"}`}
       aria-label={label}
       title={label}
@@ -299,15 +309,19 @@ function readStored(): { corner: Corner; width: number } {
 /**
  * The desktop picture-in-picture window: drag it anywhere and it snaps to the nearest corner,
  * drag its inner corner to resize (16:9), and both are remembered.
+ *
+ * Dragging moves it with a transform (no layout work per mouse move), and the snap glides from
+ * where you let go to the corner (the same transform trick in reverse).
  */
 function useFloatingWindow(enabled: boolean) {
   const [{ corner, width }, setPlace] = useState(readStored);
   // Only ever rendered in the browser (the player mounts after hydration), so window is safe here.
   const [view, setView] = useState(() => ({ w: document.documentElement.clientWidth, h: window.innerHeight }));
-  const [drag, setDrag] = useState<{ left: number; top: number } | null>(null);
+  const [offset, setOffset] = useState<{ x: number; y: number } | null>(null);
+  const [gliding, setGliding] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState(false);
   const [peek, setPeek] = useState(false);
-  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
     const on = () => setView({ w: document.documentElement.clientWidth, h: window.innerHeight });
@@ -318,25 +332,20 @@ function useFloatingWindow(enabled: boolean) {
 
   // Show the controls for a moment when the window appears, so people know they exist.
   useEffect(() => {
-    setSettled(false);
     if (!enabled) return;
     setPeek(true);
-    const t = setTimeout(() => setPeek(false), 2200);
-    // Animate later moves (snapping, window resizes) but not the jump into floating mode.
-    const s = setTimeout(() => setSettled(true), 350);
-    return () => {
-      clearTimeout(t);
-      clearTimeout(s);
-    };
+    const t = setTimeout(() => setPeek(false), 2000);
+    return () => clearTimeout(t);
   }, [enabled]);
 
   const maxW = Math.max(MIN_W, Math.min(720, view.w * 0.6));
   const w = Math.round(Math.min(Math.max(width, MIN_W), maxW));
   const h = Math.round((w * 9) / 16);
-  const home = {
-    left: corner[1] === "r" ? view.w - w - MARGIN : MARGIN,
-    top: corner[0] === "b" ? view.h - h - MARGIN : TOP_MARGIN,
-  };
+  const homeOf = (c: Corner) => ({
+    left: c[1] === "r" ? view.w - w - MARGIN : MARGIN,
+    top: c[0] === "b" ? view.h - h - MARGIN : TOP_MARGIN,
+  });
+  const home = homeOf(corner);
 
   const save = (next: { corner: Corner; width: number }) => {
     setPlace(next);
@@ -347,31 +356,60 @@ function useFloatingWindow(enabled: boolean) {
 
   const startMove = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
-    const start = { x: e.clientX, y: e.clientY, left: home.left, top: home.top };
+    const sx = e.clientX;
+    const sy = e.clientY;
+    // Keep the window on screen while it's dragged.
+    const clampX = (dx: number) => Math.min(Math.max(dx, 8 - home.left), view.w - w - 8 - home.left);
+    const clampY = (dy: number) => Math.min(Math.max(dy, 8 - home.top), view.h - h - 8 - home.top);
     let moved = false;
+    let frame = 0;
+    let last = { x: 0, y: 0 };
     const move = (ev: PointerEvent) => {
-      const dx = ev.clientX - start.x;
-      const dy = ev.clientY - start.y;
+      const dx = ev.clientX - sx;
+      const dy = ev.clientY - sy;
       if (!moved && Math.hypot(dx, dy) < 4) return;
-      moved = true;
-      setDrag({
-        left: Math.min(Math.max(start.left + dx, 8), view.w - w - 8),
-        top: Math.min(Math.max(start.top + dy, 8), view.h - h - 8),
-      });
+      if (!moved) {
+        moved = true;
+        setDragging(true);
+        setGliding(false);
+      }
+      last = { x: clampX(dx), y: clampY(dy) };
+      if (!frame)
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          setOffset(last);
+        });
     };
-    const up = (ev: PointerEvent) => {
+    const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      if (frame) cancelAnimationFrame(frame);
       if (!moved) return;
-      // Snap to whichever corner the middle of the window is closest to.
-      const cx = start.left + (ev.clientX - start.x) + w / 2;
-      const cy = start.top + (ev.clientY - start.y) + h / 2;
-      save({ corner: `${cy < view.h / 2 ? "t" : "b"}${cx < view.w / 2 ? "l" : "r"}` as Corner, width: w });
-      setDrag(null);
+      setDragging(false);
+      // Snap to whichever corner the middle of the window is closest to, gliding from the drop point.
+      const dropLeft = home.left + last.x;
+      const dropTop = home.top + last.y;
+      const target: Corner = `${dropTop + h / 2 < view.h / 2 ? "t" : "b"}${dropLeft + w / 2 < view.w / 2 ? "l" : "r"}`;
+      const to = homeOf(target);
+      save({ corner: target, width: w });
+      setOffset({ x: dropLeft - to.left, y: dropTop - to.top });
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          setGliding(true);
+          setOffset(null);
+        }),
+      );
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   };
+
+  // Stop the glide transition once it has finished so later layout changes don't animate.
+  useEffect(() => {
+    if (!gliding) return;
+    const t = setTimeout(() => setGliding(false), 320);
+    return () => clearTimeout(t);
+  }, [gliding]);
 
   const startResize = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
@@ -381,13 +419,19 @@ function useFloatingWindow(enabled: boolean) {
     const grow = corner[1] === "r" ? -1 : 1; // the handle is on the side facing the middle
     setResizing(true);
     let latest = w;
+    let frame = 0;
     const move = (ev: PointerEvent) => {
       latest = Math.round(Math.min(Math.max(w + grow * (ev.clientX - startX), MIN_W), maxW));
-      setPlace((p) => ({ ...p, width: latest }));
+      if (!frame)
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          setPlace((p) => ({ ...p, width: latest }));
+        });
     };
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      if (frame) cancelAnimationFrame(frame);
       setResizing(false);
       save({ corner, width: latest });
     };
@@ -395,14 +439,14 @@ function useFloatingWindow(enabled: boolean) {
     window.addEventListener("pointerup", up);
   };
 
-  // While resizing, keep the anchored corner fixed so the window grows towards the middle.
   return {
     corner,
     width: w,
-    left: drag?.left ?? home.left,
-    top: drag?.top ?? home.top,
-    active: !!drag || resizing,
-    settled,
+    left: home.left,
+    top: home.top,
+    transform: offset ? `translate3d(${offset.x}px, ${offset.y}px, 0)` : undefined,
+    gliding,
+    active: dragging || resizing,
     peek,
     startMove,
     startResize,

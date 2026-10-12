@@ -334,6 +334,18 @@ model WatchCursor {
   @@id([userId, anilistId, episode])
 }
 
+// Removing a show from watch history records a cutoff here: progress samples taken before it
+// (e.g. an old save still queued in a browser) are ignored so the show doesn't come back.
+// anilistId 0 means "everything" (Clear history).
+model HistoryCutoff {
+  userId    String
+  anilistId Int
+  before    Float
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, anilistId])
+}
+
 model ErrorLog {
   id        String   @id @default(cuid())
   source    String // server | client
