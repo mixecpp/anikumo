@@ -177,6 +177,15 @@ export function outranks(actor: Parameters<typeof roleOf>[0], target: Parameters
 
 export const isStaffRole = (role: Role) => role !== "user";
 
+/** Select these with a user to show their staff badge next to their name. */
+export const ROLE_FIELDS = { isAdmin: true, isModerator: true } as const;
+
+/** Swaps a user row's staff flags for their public role (owner, admin, moderator or user). */
+export function withRole<T extends { username: string; isAdmin: boolean; isModerator: boolean }>(u: T): Omit<T, "isAdmin" | "isModerator"> & { role: Role } {
+  const { isAdmin, isModerator, ...rest } = u;
+  return { ...rest, role: roleOf({ username: u.username, isAdmin, isModerator }) };
+}
+
 /** The signed-in moderator, admin or owner (with their role), or null. */
 export async function requireStaff() {
   const user = await getUser();

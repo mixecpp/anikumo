@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { getPrefs } from "@/lib/prefs";
 import SettingsForms from "@/components/account/SettingsForms";
 import { readWebhook } from "@/lib/notifications";
-import { isVisibility, parseSections } from "@/lib/privacy-shared";
+import { isVisibility, isWallSetting, parseSections } from "@/lib/privacy-shared";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -13,7 +13,7 @@ export default async function SettingsPage() {
   const [u, prefs] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { username: true, avatarColor: true, avatar: true, bio: true, profileBanner: true, profileVisibility: true, profileSections: true, searchable: true, onLeaderboard: true, allowFollows: true, discordWebhook: true, calendarToken: true, totpEnabled: true, recoveryKeyHash: true },
+      select: { username: true, avatarColor: true, avatar: true, bio: true, profileBanner: true, profileVisibility: true, profileSections: true, searchable: true, onLeaderboard: true, allowFollows: true, profileComments: true, discordWebhook: true, calendarToken: true, totpEnabled: true, recoveryKeyHash: true },
     }),
     getPrefs(),
   ]);
@@ -34,6 +34,7 @@ export default async function SettingsPage() {
           searchable: u.searchable,
           onLeaderboard: u.onLeaderboard,
           allowFollows: u.allowFollows,
+          profileComments: isWallSetting(u.profileComments) ? u.profileComments : "everyone",
         },
         discordWebhook: readWebhook(u.discordWebhook),
         calendarOn: !!u.calendarToken,

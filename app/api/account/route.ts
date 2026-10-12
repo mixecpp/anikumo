@@ -6,7 +6,7 @@ import { fail, readJson } from "@/lib/http";
 import { isDiscordWebhook } from "@/lib/notifications";
 import { encrypt } from "@/lib/crypto";
 import { deleteAvatarFile } from "@/lib/uploads";
-import { BANNER_URL, isVisibility, serializeSections } from "@/lib/privacy-shared";
+import { BANNER_URL, isVisibility, isWallSetting, serializeSections } from "@/lib/privacy-shared";
 import { checkText } from "@/lib/automod";
 
 type Body = {
@@ -19,6 +19,7 @@ type Body = {
   searchable: boolean;
   onLeaderboard: boolean;
   allowFollows: boolean;
+  profileComments: string;
   profileBanner: string;
   discordWebhook: string | null;
   currentPassword: string;
@@ -69,6 +70,10 @@ export async function PATCH(req: Request) {
     data.profilePublic = body.profileVisibility === "everyone";
   }
   if (body.profileSections !== undefined) data.profileSections = serializeSections(body.profileSections);
+  if (body.profileComments !== undefined) {
+    if (!isWallSetting(body.profileComments)) return fail("Pick who can comment on your profile");
+    data.profileComments = body.profileComments;
+  }
   for (const key of ["searchable", "onLeaderboard", "allowFollows"] as const) {
     if (body[key] !== undefined) data[key] = body[key] === true;
   }

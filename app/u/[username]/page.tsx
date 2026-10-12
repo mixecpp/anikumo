@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo";
 import { Award, Eye, Heart, Lock, MessageSquare, Star } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getUserId, roleOf } from "@/lib/auth";
 import { getAccountStats } from "@/lib/account";
 import { computeAchievements } from "@/lib/achievements";
 import { getSnapshots } from "@/lib/media";
@@ -15,6 +15,8 @@ import { Avatar } from "@/components/UserMenu";
 import FollowButton from "@/components/FollowButton";
 import SpoilerText from "@/components/SpoilerText";
 import PostFeed from "@/components/posts/Posts";
+import RoleIcon from "@/components/RoleIcon";
+import ProfileWall from "@/components/profile/ProfileWall";
 
 type Props = { params: Promise<{ username: string }>; searchParams: Promise<{ tab?: string; before?: string; preview?: string }> };
 
@@ -41,7 +43,7 @@ function Shelf({ title, items, href }: { title: string; items: { anilistId: numb
         <h2 className="text-sm font-medium">{title}</h2>
         {href && <Link href={href} className="text-xs text-muted hover:text-fg">See all</Link>}
       </div>
-      <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
+      <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
         {items.map((i) => (
           <Link key={i.anilistId} href={`/anime/${i.anilistId}`} className="group" title={i.title}>
             <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-white/[0.04]">
@@ -72,7 +74,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
     where: { username },
     select: {
       id: true, username: true, avatarColor: true, avatar: true, bio: true, createdAt: true, bannedAt: true,
-      profileVisibility: true, profileSections: true, profileBanner: true, allowFollows: true,
+      profileVisibility: true, profileSections: true, profileBanner: true, allowFollows: true, profileComments: true, isAdmin: true, isModerator: true,
       _count: { select: { followers: true, following: true, comments: true, posts: true } },
     },
   });
@@ -131,7 +133,10 @@ export default async function ProfilePage({ params, searchParams }: Props) {
             <Avatar name={user.username} color={user.avatarColor} avatar={user.avatar} size={84} />
           </div>
           <div className="min-w-0 flex-1 pb-1">
-            <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-3xl">{user.username}</h1>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+              <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-3xl">{user.username}</h1>
+              <RoleIcon role={roleOf(user)} label />
+            </div>
             <p className="mt-1 font-mono text-[11px] text-muted">
               {show.follows && `${user._count.followers} followers · ${user._count.following} following · `}
               joined {user.createdAt.toLocaleDateString(undefined, { month: "short", year: "numeric" })}
@@ -187,13 +192,13 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           <PostFeed source={{ username: user.username }} canPost={isOwner && sp.preview !== "1"} empty={isOwner ? "Share what you're watching, or recommend a show to your followers." : `${user.username} hasn't posted yet.`} />
         </div>
       ) : (
-        <Overview user={user} show={show} />
+        <Overview user={user} show={show} wall={<ProfileWall username={user.username} isOwner={isOwner && sp.preview !== "1"} loggedIn={!!viewerId} />} />
       )}
     </div>
   );
 }
 
-async function Overview({ user, show }: { user: { id: string; username: string; _count: { following: number } }; show: Sections }) {
+async function Overview({ user, show, wall }: { user: { id: string; username: string; _count: { following: number } }; show: Sections; wall: React.ReactNode }) {
   const [stats, favorites, watching, completed, lists, reviews, completedIds, listCount] = await Promise.all([
     getAccountStats(user.id),
     show.favorites ? prisma.favorite.findMany({ where: { userId: user.id }, orderBy: { addedAt: "desc" }, take: 8 }) : [],
@@ -219,9 +224,10 @@ async function Overview({ user, show }: { user: { id: string; username: string; 
   const empty = !show.stats && !earned.length && !favorites.length && !watching.length && !completed.length && !lists.length && !reviews.length;
 
   return (
-    <>
+    <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="min-w-0">
       {show.stats && (
-        <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.06] sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.06] sm:grid-cols-4">
           {tiles.map(([k, v]) => (
             <div key={k} className="bg-bg p-4">
               <div className="text-xl font-semibold tabular-nums">{v}</div>
@@ -241,7 +247,7 @@ async function Overview({ user, show }: { user: { id: string; username: string; 
         </div>
       )}
 
-      <div className="mt-10 space-y-10">
+      <div className={`space-y-10 ${show.stats || earned.length ? "mt-10" : ""}`}>
         {empty && <p className="panel rounded-xl p-8 text-center text-sm text-muted">{user.username} keeps their profile details private.</p>}
         <Shelf title="Watching" items={watching} />
         <Shelf title="Favorites" items={favorites} />
@@ -250,7 +256,7 @@ async function Overview({ user, show }: { user: { id: string; username: string; 
         {lists.length > 0 && (
           <section>
             <h2 className="mb-3 text-sm font-medium">Lists</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               {lists.map((l) => (
                 <Link key={l.id} href={`/u/${user.username}/lists/${l.id}`} className="panel flex items-center gap-3 rounded-xl p-3 transition-colors hover:border-white/15">
                   <div className="flex -space-x-4">
@@ -302,7 +308,9 @@ async function Overview({ user, show }: { user: { id: string; username: string; 
           </section>
         )}
       </div>
-    </>
+      </div>
+      <aside className="min-w-0">{wall}</aside>
+    </div>
   );
 }
 

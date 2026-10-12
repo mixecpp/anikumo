@@ -9,10 +9,12 @@ import { Avatar } from "./UserMenu";
 import SectionHeading from "./SectionHeading";
 import SpoilerText from "./SpoilerText";
 import ReportButton from "./ReportButton";
+import RoleIcon from "./RoleIcon";
+import type { Role } from "@/lib/roles";
 import ScorePicker from "./list/ScorePicker";
 import { usePrefs } from "./PrefsProvider";
 
-type R = { id: string; score: number; title: string; body: string; createdAt: string; helpful: number; voted: boolean; user: { id: string; username: string; avatarColor: string; avatar: string; profilePublic: boolean } };
+type R = { id: string; score: number; title: string; body: string; createdAt: string; helpful: number; voted: boolean; user: { id: string; username: string; avatarColor: string; avatar: string; profilePublic: boolean; role?: Role } };
 
 export default function Reviews({ anilistId }: { anilistId: number }) {
   const { loggedIn } = usePrefs();
@@ -121,6 +123,7 @@ export default function Reviews({ anilistId }: { anilistId: number }) {
                     ) : (
                       <span className="text-sm font-medium">{r.user.username}</span>
                     )}
+                    <RoleIcon role={r.user.role} className="ml-1" />
                     <div className="font-mono text-[11px] text-muted">{new Date(r.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}</div>
                   </div>
                   <span className="flex items-center gap-1 font-mono text-sm">

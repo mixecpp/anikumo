@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { fail, readJson, requireUserId, toInt } from "@/lib/http";
 import { notify } from "@/lib/notifications";
-import { requireStaff } from "@/lib/auth";
+import { ROLE_FIELDS, requireStaff, withRole } from "@/lib/auth";
 import { logAdmin } from "@/lib/admin";
 import { checkEdit, checkWrite, writeStatus } from "@/lib/spam";
 import { removeAndNotify } from "@/lib/reports";
 
-const USER = { select: { id: true, username: true, avatarColor: true, avatar: true, profilePublic: true } } as const;
+const USER = { select: { id: true, username: true, avatarColor: true, avatar: true, profilePublic: true, ...ROLE_FIELDS } } as const;
 
-function shape<T extends { likes: { userId: string }[]; _count: { likes: number } }>(c: T, me: string | null) {
+function shape<T extends { user: { username: string; isAdmin: boolean; isModerator: boolean }; likes: { userId: string }[]; _count: { likes: number } }>(c: T, me: string | null) {
   const { likes, _count, ...rest } = c;
-  return { ...rest, likeCount: _count.likes, liked: !!me && likes.some((l) => l.userId === me) };
+  return { ...rest, user: withRole(c.user), likeCount: _count.likes, liked: !!me && likes.some((l) => l.userId === me) };
 }
 
 /**

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ImageIcon, LoaderCircle, Search, X } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { SECTIONS, VISIBILITIES, type Section, type Sections, type Visibility } from "@/lib/privacy-shared";
+import { SECTIONS, VISIBILITIES, WALL_SETTINGS, type Section, type Sections, type Visibility, type WallSetting } from "@/lib/privacy-shared";
 import { Toggle } from "../list/EntryEditor";
 import { Row, SettingsCard } from "./SettingsCard";
 
@@ -19,6 +19,7 @@ export type PrivacyUser = {
   searchable: boolean;
   onLeaderboard: boolean;
   allowFollows: boolean;
+  profileComments: WallSetting;
 };
 
 async function patchAccount(body: object) {
@@ -36,6 +37,7 @@ export function ProfilePrivacyCard({ user }: { user: PrivacyUser }) {
   const [visibility, setVisibility] = useState<Visibility>(user.profileVisibility);
   const [sections, setSections] = useState<Sections>(user.profileSections);
   const [flags, setFlags] = useState({ searchable: user.searchable, onLeaderboard: user.onLeaderboard, allowFollows: user.allowFollows });
+  const [wall, setWall] = useState<WallSetting>(user.profileComments);
   const [picking, setPicking] = useState(false);
 
   async function save(body: object, done: string, undo: () => void) {
@@ -140,6 +142,31 @@ export function ProfilePrivacyCard({ user }: { user: PrivacyUser }) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Profile comments */}
+        <div className={hidden ? "pointer-events-none opacity-40" : ""} aria-disabled={hidden}>
+          <span className="mb-1.5 block text-xs font-medium text-muted">Who can comment on your profile</span>
+          <div className="grid gap-1.5 sm:grid-cols-3" role="radiogroup" aria-label="Who can comment on your profile">
+            {WALL_SETTINGS.map((v) => (
+              <button
+                key={v.value}
+                role="radio"
+                aria-checked={wall === v.value}
+                onClick={() => {
+                  if (v.value === wall) return;
+                  const prev = wall;
+                  setWall(v.value);
+                  save({ profileComments: v.value }, v.value === "off" ? "Profile comments turned off" : v.value === "followers" ? "Only followers can comment" : "Anyone can comment", () => setWall(prev));
+                }}
+                className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${wall === v.value ? "border-accent/60 bg-accent/[0.08]" : "border-white/[0.07] hover:border-white/15"}`}
+              >
+                <div className="text-sm font-medium">{v.label}</div>
+                <div className="mt-0.5 text-[11px] leading-snug text-muted">{v.hint}</div>
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted">You can delete any comment left on your profile.</p>
         </div>
 
         {/* Sections */}

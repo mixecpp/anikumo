@@ -6,7 +6,8 @@ import { UserCheck, UserPlus } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { usePrefs } from "./PrefsProvider";
 
-export default function FollowButton({ username, initial }: { username: string; initial: boolean }) {
+/** `compact`: a small pill for lists (and no page refresh, so the list doesn't reshuffle). */
+export default function FollowButton({ username, initial, compact = false }: { username: string; initial: boolean; compact?: boolean }) {
   const router = useRouter();
   const { loggedIn } = usePrefs();
   const [following, setFollowing] = useState(initial);
@@ -24,8 +25,20 @@ export default function FollowButton({ username, initial }: { username: string; 
       return toast(json.error ?? "Couldn't update", "error");
     }
     setFollowing(json.following);
-    router.refresh();
+    if (!compact) router.refresh();
   }
+
+  if (compact)
+    return (
+      <button
+        onClick={toggle}
+        disabled={busy}
+        aria-pressed={following}
+        className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${following ? "border border-white/10 text-muted hover:text-fg" : "bg-fg text-bg hover:opacity-90"}`}
+      >
+        {following ? "Following" : "Follow"}
+      </button>
+    );
 
   return (
     <button onClick={toggle} disabled={busy} className={`btn ${following ? "btn-ghost" : "btn-primary"}`}>

@@ -5,16 +5,17 @@ import { notify } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rate-limit";
 import { getSnapshots } from "@/lib/media";
 import { COMMENT_MAX, POST_MAX, getPost, listPosts } from "@/lib/posts";
-import { requireStaff } from "@/lib/auth";
+import { ROLE_FIELDS, requireStaff, withRole } from "@/lib/auth";
 import { logAdmin } from "@/lib/admin";
 import { checkWrite, writeStatus } from "@/lib/spam";
 import { removeAndNotify } from "@/lib/reports";
 
-const PERSON = { select: { username: true, avatarColor: true, avatar: true } } as const;
+const PERSON = { select: { username: true, avatarColor: true, avatar: true, ...ROLE_FIELDS } } as const;
 
 /**
  * GET ?username=&before=          that person's posts (if their privacy lets you see them)
  * GET ?feed=following|everyone    posts from people you follow (and you), or all public posts
+ *     &recs=1                      only posts recommending an anime
  * GET ?id=                        one post with its comments
  */
 export async function GET(req: Request) {
@@ -29,12 +30,12 @@ export async function GET(req: Request) {
     return NextResponse.json({
       post: post.view,
       staff,
-      comments: comments.map((c) => ({ id: c.id, body: c.body, createdAt: c.createdAt, author: c.user, mine: c.userId === me, canDelete: c.userId === me || post.row.userId === me || staff })),
+      comments: comments.map((c) => ({ id: c.id, body: c.body, createdAt: c.createdAt, author: withRole(c.user), mine: c.userId === me, canDelete: c.userId === me || post.row.userId === me || staff })),
     });
   }
   const before = sp.get("before") && !Number.isNaN(Date.parse(sp.get("before")!)) ? new Date(sp.get("before")!) : null;
   const feed = sp.get("feed");
-  const result = await listPosts({ viewerId: me, before, scope: feed === "following" ? "following" : feed === "everyone" ? "everyone" : "user", username: sp.get("username") ?? undefined });
+  const result = await listPosts({ viewerId: me, before, recs: sp.get("recs") === "1", scope: feed === "following" ? "following" : feed === "everyone" ? "everyone" : "user", username: sp.get("username") ?? undefined });
   if (!result) return fail("These posts are private", 404);
   return NextResponse.json({ ...result, staff }, { headers: { "Cache-Control": "private, no-store" } });
 }
@@ -86,11 +87,11 @@ export async function POST(req: Request) {
         type: "reply",
         title: `${comment.user.username} commented on your post`,
         body: body.slice(0, 140),
-        href: `/u/${post.view.author.username}?tab=posts#post-${id}`,
+        href: `/post/${id}#comments`,
         key: `postcomment:${comment.id}`,
       });
     }
-    return NextResponse.json({ comment: { id: comment.id, body: comment.body, createdAt: comment.createdAt, author: comment.user, mine: true, canDelete: true } });
+    return NextResponse.json({ comment: { id: comment.id, body: comment.body, createdAt: comment.createdAt, author: withRole(comment.user), mine: true, canDelete: true } });
   }
 
   if (b.action === "like") {

@@ -1,5 +1,7 @@
 import { prisma } from "./db";
 import { parseSections } from "./privacy-shared";
+import { roleOf } from "./auth";
+import type { Role } from "./roles";
 
 /**
  * Profile posts (Twitter-style). Who can see a post follows the author's profile privacy:
@@ -11,7 +13,7 @@ export const POST_MAX = 500;
 export const COMMENT_MAX = 300;
 export const PAGE = 20;
 
-const AUTHOR = { select: { id: true, username: true, avatarColor: true, avatar: true, profileVisibility: true, profileSections: true, bannedAt: true } } as const;
+const AUTHOR = { select: { id: true, username: true, avatarColor: true, avatar: true, profileVisibility: true, profileSections: true, bannedAt: true, isAdmin: true, isModerator: true } } as const;
 type Author = { id: string; username: string; avatarColor: string; avatar: string; profileVisibility: string; profileSections: string; bannedAt: Date | null };
 
 export type PostView = {
@@ -20,7 +22,7 @@ export type PostView = {
   createdAt: string;
   editedAt: string | null;
   anime: { id: number; title: string; cover: string; recommend: boolean } | null;
-  author: { username: string; avatarColor: string; avatar: string };
+  author: { username: string; avatarColor: string; avatar: string; role: Role };
   likes: number;
   liked: boolean;
   comments: number;
@@ -57,7 +59,7 @@ function shape(p: Row, viewerId: string | null): PostView {
     createdAt: p.createdAt.toISOString(),
     editedAt: p.editedAt?.toISOString() ?? null,
     anime: p.anilistId ? { id: p.anilistId, title: p.animeTitle, cover: p.animeCover, recommend: p.recommend } : null,
-    author: { username: p.user.username, avatarColor: p.user.avatarColor, avatar: p.user.avatar },
+    author: { username: p.user.username, avatarColor: p.user.avatarColor, avatar: p.user.avatar, role: roleOf(p.user) },
     likes: p._count.likes,
     liked: p.likes.length > 0,
     comments: p._count.comments,
@@ -66,9 +68,11 @@ function shape(p: Row, viewerId: string | null): PostView {
 }
 
 /** A page of posts. `next` is the cursor for the following page (null at the end). */
-export async function listPosts(opts: { viewerId: string | null; scope: "user" | "following" | "everyone"; username?: string; before?: Date | null }) {
+export async function listPosts(opts: { viewerId: string | null; scope: "user" | "following" | "everyone"; username?: string; before?: Date | null; recs?: boolean; take?: number }) {
   const { viewerId, scope } = opts;
-  const cursor = opts.before ? { createdAt: { lt: opts.before } } : {};
+  const take = Math.min(opts.take ?? PAGE, PAGE);
+  // Cursor, plus "recommendations only" when asked.
+  const cursor = { ...(opts.before ? { createdAt: { lt: opts.before } } : {}), ...(opts.recs ? { recommend: true } : {}) };
   let where: Record<string, unknown>;
 
   if (scope === "user") {
@@ -87,11 +91,11 @@ export async function listPosts(opts: { viewerId: string | null; scope: "user" |
     where = { user: { profileVisibility: "everyone", bannedAt: null }, ...cursor };
   }
 
-  const rows = await prisma.post.findMany({ where, orderBy: { createdAt: "desc" }, take: PAGE, include: include(viewerId) });
+  const rows = await prisma.post.findMany({ where, orderBy: { createdAt: "desc" }, take, include: include(viewerId) });
   // Section switches and follower-only profiles are checked per author.
   const follows = scope === "user" ? null : await followingSet(viewerId, [...new Set(rows.map((r) => r.userId))]);
   const visible = scope === "user" ? rows : rows.filter((r) => canSeePosts(r.user, viewerId, follows!.has(r.userId)));
-  return { posts: visible.map((r) => shape(r, viewerId)), next: rows.length === PAGE ? rows.at(-1)!.createdAt.toISOString() : null };
+  return { posts: visible.map((r) => shape(r, viewerId)), next: rows.length === take ? rows.at(-1)!.createdAt.toISOString() : null };
 }
 
 /** One post the viewer is allowed to see, or null. */
@@ -100,4 +104,48 @@ export async function getPost(id: string, viewerId: string | null) {
   if (!p) return null;
   const follows = (await followingSet(viewerId, [p.userId])).has(p.userId);
   return canSeePosts(p.user, viewerId, follows) ? { row: p, view: shape(p, viewerId) } : null;
+}
+
+/** Anime people recommended most in public posts over the last two weeks (feed sidebar). */
+export async function trendingRecommendations(limit = 5) {
+  const since = new Date(Date.now() - 14 * 86400_000);
+  const rows = await prisma.post.groupBy({
+    by: ["anilistId"],
+    where: { recommend: true, anilistId: { not: null }, createdAt: { gt: since }, user: { profileVisibility: "everyone", bannedAt: null } },
+    _count: { _all: true },
+    orderBy: { _count: { anilistId: "desc" } },
+    take: limit,
+  });
+  if (!rows.length) return [];
+  const latest = await prisma.post.findMany({
+    where: { anilistId: { in: rows.map((r) => r.anilistId!) }, recommend: true },
+    orderBy: { createdAt: "desc" },
+    distinct: ["anilistId"],
+    select: { anilistId: true, animeTitle: true, animeCover: true },
+  });
+  const meta = new Map(latest.map((l) => [l.anilistId, l]));
+  return rows.map((r) => ({ id: r.anilistId!, title: meta.get(r.anilistId)?.animeTitle ?? "Anime", cover: meta.get(r.anilistId)?.animeCover ?? "", count: r._count._all }));
+}
+
+/** Public, followable members who post a lot lately and the viewer doesn't follow yet. */
+export async function whoToFollow(viewerId: string | null, limit = 4) {
+  const since = new Date(Date.now() - 30 * 86400_000);
+  const followed = viewerId ? (await prisma.follow.findMany({ where: { followerId: viewerId }, select: { followingId: true } })).map((f) => f.followingId) : [];
+  const exclude = viewerId ? [viewerId, ...followed] : [];
+  const active = await prisma.post.groupBy({
+    by: ["userId"],
+    where: { createdAt: { gt: since }, userId: { notIn: exclude }, user: { profileVisibility: "everyone", bannedAt: null, allowFollows: true, searchable: true } },
+    _count: { _all: true },
+    orderBy: { _count: { userId: "desc" } },
+    take: limit,
+  });
+  const users = await prisma.user.findMany({
+    where: { id: { in: active.map((a) => a.userId) } },
+    select: { id: true, username: true, avatarColor: true, avatar: true, bio: true, isAdmin: true, isModerator: true, _count: { select: { followers: true } } },
+  });
+  const byId = new Map(users.map((u) => [u.id, u]));
+  return active
+    .map((a) => byId.get(a.userId))
+    .filter((u): u is NonNullable<typeof u> => !!u)
+    .map((u) => ({ username: u.username, avatarColor: u.avatarColor, avatar: u.avatar, bio: u.bio, followers: u._count.followers, role: roleOf(u) }));
 }

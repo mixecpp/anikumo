@@ -8,6 +8,7 @@ import { Building2, CornerDownLeft, LoaderCircle, Search, X } from "lucide-react
 import { clearRecent, readRecent, type RecentItem } from "@/lib/recent";
 import type { SearchGroup, SearchItem } from "@/app/api/search/route";
 import { Avatar } from "./UserMenu";
+import RoleIcon from "./RoleIcon";
 
 const PHONE = "(max-width: 767px)";
 
@@ -268,7 +269,10 @@ export default function SearchBox() {
                       >
                         <Thumb item={item} />
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm">{item.title}</div>
+                          <div className="flex min-w-0 items-center gap-1 text-sm">
+                            <span className="truncate">{item.title}</span>
+                            <RoleIcon role={item.role} />
+                          </div>
                           {item.subtitle && <div className="truncate text-xs text-muted">{item.subtitle}</div>}
                         </div>
                         {active === i && <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-muted" />}

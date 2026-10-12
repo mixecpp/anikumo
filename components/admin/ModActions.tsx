@@ -169,10 +169,10 @@ export function ReportButtons({ reportId }: { reportId: string }) {
 }
 
 /** Delete one piece of content (with a quick confirm). */
-export function RemoveButton({ kind, id }: { kind: "comment" | "review" | "post" | "post_comment"; id: string }) {
+export function RemoveButton({ kind, id }: { kind: "comment" | "review" | "post" | "post_comment" | "profile_comment"; id: string }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
-  const action = { comment: "deleteComment", review: "deleteReview", post: "deletePost", post_comment: "deletePostComment" }[kind];
+  const action = { comment: "deleteComment", review: "deleteReview", post: "deletePost", post_comment: "deletePostComment", profile_comment: "deleteProfileComment" }[kind];
   if (confirming)
     return (
       <span className="flex items-center gap-0.5">

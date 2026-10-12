@@ -15,7 +15,7 @@ type Props = { searchParams: Promise<{ tab?: string; show?: string }> };
 const PERSON = { select: { id: true, username: true, avatarColor: true, avatar: true, isAdmin: true, isModerator: true, mutedUntil: true, bannedAt: true } } as const;
 type Person = { id: string; username: string; avatarColor: string; avatar: string; isAdmin: boolean; isModerator: boolean; mutedUntil: Date | null; bannedAt: Date | null };
 
-const TYPE_LABEL: Record<ReportableType, string> = { comment: "Comment", review: "Review", post: "Post", post_comment: "Post reply" };
+const TYPE_LABEL: Record<ReportableType, string> = { comment: "Comment", review: "Review", post: "Post", post_comment: "Post reply", profile_comment: "Profile comment" };
 const KIND_LABEL: Record<string, string> = { ban: "Ban", clearProfile: "Clear bio & banner", removeAvatar: "Remove picture" };
 
 function ago(d: Date) {
@@ -227,20 +227,22 @@ async function Requests({ isAdmin, myId }: { isAdmin: boolean; myId: string }) {
   );
 }
 
-type ActivityItem = { key: string; kind: "post" | "comment" | "review" | "post_comment"; id: string; at: Date; person: Person; body: string; href: string; where: string };
+type ActivityItem = { key: string; kind: "post" | "comment" | "review" | "post_comment" | "profile_comment"; id: string; at: Date; person: Person; body: string; href: string; where: string };
 
 async function Activity({ show, actionsFor }: { show?: string; actionsFor: (p: Person) => React.ReactNode }) {
   const filter = ["posts", "comments", "reviews"].includes(show ?? "") ? show : "all";
   const take = filter === "all" ? 15 : 40;
-  const [posts, replies, comments, reviews] = await Promise.all([
+  const [posts, replies, comments, reviews, wall] = await Promise.all([
     filter === "all" || filter === "posts" ? prisma.post.findMany({ orderBy: { createdAt: "desc" }, take, include: { user: PERSON } }) : [],
     filter === "all" || filter === "posts" ? prisma.postComment.findMany({ orderBy: { createdAt: "desc" }, take, include: { user: PERSON, post: { select: { user: { select: { username: true } } } } } }) : [],
     filter === "all" || filter === "comments" ? prisma.comment.findMany({ orderBy: { createdAt: "desc" }, take, include: { user: PERSON } }) : [],
     filter === "all" || filter === "reviews" ? prisma.review.findMany({ orderBy: { createdAt: "desc" }, take, include: { user: PERSON } }) : [],
+    filter === "all" || filter === "comments" ? prisma.profileComment.findMany({ orderBy: { createdAt: "desc" }, take, include: { user: PERSON, profile: { select: { username: true } } } }) : [],
   ]);
   const items: ActivityItem[] = [
-    ...posts.map((p) => ({ key: `p${p.id}`, kind: "post" as const, id: p.id, at: p.createdAt, person: p.user, body: p.body || (p.animeTitle ? `📺 ${p.animeTitle}` : ""), href: `/u/${p.user.username}?tab=posts#post-${p.id}`, where: "post" })),
-    ...replies.map((c) => ({ key: `r${c.id}`, kind: "post_comment" as const, id: c.id, at: c.createdAt, person: c.user, body: c.body, href: `/u/${c.post.user.username}?tab=posts#post-${c.postId}`, where: `reply on ${c.post.user.username}'s post` })),
+    ...posts.map((p) => ({ key: `p${p.id}`, kind: "post" as const, id: p.id, at: p.createdAt, person: p.user, body: p.body || (p.animeTitle ? `📺 ${p.animeTitle}` : ""), href: `/post/${p.id}`, where: "post" })),
+    ...replies.map((c) => ({ key: `r${c.id}`, kind: "post_comment" as const, id: c.id, at: c.createdAt, person: c.user, body: c.body, href: `/post/${c.postId}`, where: `reply on ${c.post.user.username}'s post` })),
+    ...wall.map((c) => ({ key: `w${c.id}`, kind: "profile_comment" as const, id: c.id, at: c.createdAt, person: c.user, body: c.body, href: `/u/${c.profile.username}#wall-${c.id}`, where: `on ${c.profile.username}'s profile` })),
     ...comments.map((c) => ({ key: `c${c.id}`, kind: "comment" as const, id: c.id, at: c.createdAt, person: c.user, body: c.body, href: `${c.episode ? `/watch/${c.anilistId}/${c.episode}` : `/anime/${c.anilistId}`}#comment-${c.id}`, where: c.episode ? `episode ${c.episode} discussion` : "show discussion" })),
     ...reviews.map((r) => ({ key: `v${r.id}`, kind: "review" as const, id: r.id, at: r.createdAt, person: r.user, body: [r.title, r.body].filter(Boolean).join(" — "), href: `/anime/${r.anilistId}#reviews`, where: `review · ${r.score}/10` })),
   ].sort((a, b) => b.at.getTime() - a.at.getTime());

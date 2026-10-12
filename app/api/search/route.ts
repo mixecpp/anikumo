@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { searchEverything, titleOf } from "@/lib/anilist";
 import { prisma } from "@/lib/db";
+import { ROLE_FIELDS, roleOf } from "@/lib/auth";
+import type { Role } from "@/lib/roles";
 import { getPrefs } from "@/lib/prefs";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
-export type SearchItem = { kind: "anime" | "character" | "staff" | "studio" | "user"; href: string; title: string; subtitle: string; image: string | null; avatar?: { color: string; value: string } };
+export type SearchItem = { kind: "anime" | "character" | "staff" | "studio" | "user"; href: string; title: string; subtitle: string; image: string | null; avatar?: { color: string; value: string }; role?: Role };
 export type SearchGroup = { kind: SearchItem["kind"]; label: string; items: SearchItem[] };
 
 const FORMAT: Record<string, string> = { TV: "TV", TV_SHORT: "TV short", MOVIE: "Movie", SPECIAL: "Special", OVA: "OVA", ONA: "ONA", MUSIC: "Music" };
@@ -26,7 +28,7 @@ export async function GET(req: Request) {
     userQuery
       ? prisma.user.findMany({
           where: { profilePublic: true, searchable: true, bannedAt: null, username: { contains: userQuery } },
-          select: { username: true, avatarColor: true, avatar: true, bio: true, _count: { select: { followers: true } } },
+          select: { username: true, avatarColor: true, avatar: true, bio: true, ...ROLE_FIELDS, _count: { select: { followers: true } } },
           take: 20,
         })
       : [],
@@ -75,6 +77,7 @@ export async function GET(req: Request) {
         subtitle: u.bio ? u.bio.slice(0, 80) : `${u._count.followers} follower${u._count.followers === 1 ? "" : "s"}`,
         image: null,
         avatar: { color: u.avatarColor, value: u.avatar },
+        role: roleOf(u),
       })),
     };
     // Looking for a person ("@name" or their exact username): show them before the anime.

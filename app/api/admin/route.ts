@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     await log(b.action === "resolve" ? "Removed reported content" : "Dismissed report", `${report.targetType} ${report.targetId}`, report.reason);
     return NextResponse.json({ ok: true });
   }
-  const CONTENT = { deleteComment: "comment", deleteReview: "review", deletePost: "post", deletePostComment: "post_comment" } as const;
+  const CONTENT = { deleteComment: "comment", deleteReview: "review", deletePost: "post", deletePostComment: "post_comment", deleteProfileComment: "profile_comment" } as const;
   if (typeof b.action === "string" && b.action in CONTENT) {
     const type = CONTENT[b.action as keyof typeof CONTENT];
     await removeAndNotify(type, str("id"), str("reason", 200));

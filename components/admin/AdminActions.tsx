@@ -27,7 +27,7 @@ export function ReportActions({ reportId }: { reportId: string }) {
   );
 }
 
-const DELETE_ACTION = { comment: "deleteComment", review: "deleteReview", post: "deletePost", post_comment: "deletePostComment" } as const;
+const DELETE_ACTION = { comment: "deleteComment", review: "deleteReview", post: "deletePost", post_comment: "deletePostComment", profile_comment: "deleteProfileComment" } as const;
 
 export function DeleteContent({ kind, id }: { kind: keyof typeof DELETE_ACTION; id: string }) {
   const router = useRouter();

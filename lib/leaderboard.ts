@@ -1,9 +1,11 @@
 import { prisma } from "./db";
 import { cached } from "./cache";
 import { localDay } from "./watchtime";
+import { roleOf } from "./auth";
+import type { Role } from "./roles";
 
 export type LeaderPeriod = "week" | "month" | "all";
-export type LeaderRow = { rank: number; userId: string; username: string; avatarColor: string; avatar: string; seconds: number; episodes: number; shows: number };
+export type LeaderRow = { rank: number; userId: string; username: string; avatarColor: string; avatar: string; role: Role; seconds: number; episodes: number; shows: number };
 
 function since(period: LeaderPeriod) {
   if (period === "all") return undefined;
@@ -17,7 +19,7 @@ function since(period: LeaderPeriod) {
 export async function getLeaderboard(period: LeaderPeriod, limit = 50): Promise<LeaderRow[]> {
   return cached(`leaderboard:${period}:${limit}`, 120, async () => {
     const day = since(period);
-    const publicUsers = await prisma.user.findMany({ where: { profilePublic: true, onLeaderboard: true, bannedAt: null }, select: { id: true, username: true, avatarColor: true, avatar: true } });
+    const publicUsers = await prisma.user.findMany({ where: { profilePublic: true, onLeaderboard: true, bannedAt: null }, select: { id: true, username: true, avatarColor: true, avatar: true, isAdmin: true, isModerator: true } });
     if (!publicUsers.length) return [];
     const ids = publicUsers.map((u) => u.id);
     const where = { userId: { in: ids }, ...(day ? { day: { gte: day } } : {}) };
@@ -40,7 +42,7 @@ export async function getLeaderboard(period: LeaderPeriod, limit = 50): Promise<
       .slice(0, limit)
       .map((t, i) => {
         const u = byUser.get(t.userId)!;
-        return { rank: i + 1, userId: t.userId, username: u.username, avatarColor: u.avatarColor, avatar: u.avatar, seconds: t._sum.seconds ?? 0, episodes: episodes.get(t.userId) ?? 0, shows: shows.get(t.userId)?.size ?? 0 };
+        return { rank: i + 1, userId: t.userId, username: u.username, avatarColor: u.avatarColor, avatar: u.avatar, role: roleOf(u), seconds: t._sum.seconds ?? 0, episodes: episodes.get(t.userId) ?? 0, shows: shows.get(t.userId)?.size ?? 0 };
       });
   });
 }

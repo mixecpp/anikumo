@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkText } from "@/lib/automod";
 import { prisma } from "@/lib/db";
 import { fail, readJson, requireUserId, toInt } from "@/lib/http";
 import { getSnapshots } from "@/lib/media";
@@ -35,8 +36,11 @@ export async function POST(req: Request) {
   if (action === "create") {
     const title = String(b.title ?? "").trim().slice(0, 80);
     if (!title) return fail("Give the list a name");
+    const description = String(b.description ?? "").slice(0, 500);
+    const blocked = checkText(title, description);
+    if (blocked) return fail(blocked);
     if ((await prisma.customList.count({ where: { userId } })) >= 50) return fail("You can have up to 50 lists");
-    const list = await prisma.customList.create({ data: { userId, title, description: String(b.description ?? "").slice(0, 500), isPublic: b.isPublic === true } });
+    const list = await prisma.customList.create({ data: { userId, title, description, isPublic: b.isPublic === true } });
     return NextResponse.json({ list });
   }
 
@@ -51,6 +55,8 @@ export async function POST(req: Request) {
       data.title = title;
     }
     if (b.description !== undefined) data.description = String(b.description).slice(0, 500);
+    const blocked = checkText(data.title as string | undefined, data.description as string | undefined);
+    if (blocked) return fail(blocked);
     if (b.isPublic !== undefined) data.isPublic = b.isPublic === true;
     return NextResponse.json({ list: await prisma.customList.update({ where: { id: list.id }, data }) });
   }
@@ -71,16 +77,23 @@ export async function POST(req: Request) {
     }
     if ((await prisma.customListItem.count({ where: { listId: list.id } })) >= 500) return fail("Lists can hold up to 500 shows");
     const snap = (await getSnapshots([anilistId])).get(anilistId);
+    // AniList's title and cover win; what the browser sent is only a fallback (and filtered).
+    const title = String(snap?.title ?? b.title ?? "Untitled").slice(0, 300);
+    if (checkText(title)) return fail("Couldn't find that anime");
+    const cover = String(snap?.coverImage ?? b.coverImage ?? "");
     const max = await prisma.customListItem.aggregate({ where: { listId: list.id }, _max: { position: true } });
     await prisma.customListItem.create({
-      data: { listId: list.id, anilistId, title: String(b.title ?? snap?.title ?? "Untitled").slice(0, 300), coverImage: String(b.coverImage ?? snap?.coverImage ?? "").slice(0, 500), position: (max._max.position ?? 0) + 1 },
+      data: { listId: list.id, anilistId, title, coverImage: /^https:\/\/s\d+\.anilist\.co\//.test(cover) ? cover.slice(0, 500) : "", position: (max._max.position ?? 0) + 1 },
     });
     await prisma.customList.update({ where: { id: list.id }, data: { updatedAt: new Date() } });
     return NextResponse.json({ contains: true });
   }
   if (action === "note") {
     if (!anilistId) return fail("anilistId required");
-    await prisma.customListItem.updateMany({ where: { listId: list.id, anilistId }, data: { note: String(b.note ?? "").slice(0, 300) } });
+    const note = String(b.note ?? "").slice(0, 300);
+    const blocked = checkText(note);
+    if (blocked) return fail(blocked);
+    await prisma.customListItem.updateMany({ where: { listId: list.id, anilistId }, data: { note } });
     return NextResponse.json({ ok: true });
   }
   if (action === "reorder") {

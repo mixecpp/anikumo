@@ -8,6 +8,7 @@ import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatDuration } from "@/lib/watchtime";
 import { Avatar } from "@/components/UserMenu";
+import RoleIcon from "@/components/RoleIcon";
 
 export const metadata: Metadata = pageMeta({ title: "Leaderboard", description: "Who's watched the most anime on AniKumo, measured by real, active watch time.", path: "/leaderboard" });
 export const dynamic = "force-dynamic";
@@ -64,7 +65,10 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
                   <span className="relative">
                     <Avatar name={r.username} color={r.avatarColor} avatar={r.avatar} size={32} />
                   </span>
-                  <span className="relative min-w-0 flex-1 truncate text-sm font-medium group-hover:underline">{r.username}</span>
+                  <span className="relative flex min-w-0 flex-1 items-center gap-1 text-sm font-medium">
+                    <span className="truncate group-hover:underline">{r.username}</span>
+                    <RoleIcon role={r.role} />
+                  </span>
                   <span className="relative hidden w-24 text-right font-mono text-xs text-muted sm:block">{r.episodes} eps</span>
                   <span className="relative hidden w-20 text-right font-mono text-xs text-muted sm:block">{r.shows} shows</span>
                   <span className="relative w-20 text-right font-mono text-sm tabular-nums">{formatDuration(r.seconds)}</span>

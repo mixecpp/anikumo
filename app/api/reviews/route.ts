@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { fail, readJson, requireUserId, toInt } from "@/lib/http";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkWrite, writeStatus } from "@/lib/spam";
+import { ROLE_FIELDS, withRole } from "@/lib/auth";
 
 /** GET ?anilistId= → reviews sorted by helpful votes, plus the viewer's own review. */
 export async function GET(req: Request) {
@@ -14,12 +15,12 @@ export async function GET(req: Request) {
     orderBy: [{ votes: { _count: "desc" } }, { createdAt: "desc" }],
     take: 50,
     include: {
-      user: { select: { id: true, username: true, avatarColor: true, avatar: true, profilePublic: true } },
+      user: { select: { id: true, username: true, avatarColor: true, avatar: true, profilePublic: true, ...ROLE_FIELDS } },
       votes: { where: { userId: me ?? "" }, select: { userId: true } },
       _count: { select: { votes: true } },
     },
   });
-  const reviews = rows.map(({ votes, _count, ...r }) => ({ ...r, helpful: _count.votes, voted: votes.length > 0 }));
+  const reviews = rows.map(({ votes, _count, ...r }) => ({ ...r, user: withRole(r.user), helpful: _count.votes, voted: votes.length > 0 }));
   const avg = rows.length ? rows.reduce((n, r) => n + r.score, 0) / rows.length : null;
   return NextResponse.json({ reviews, me, average: avg, count: rows.length });
 }

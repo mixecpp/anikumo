@@ -18,6 +18,7 @@ import { getUi } from "@/lib/server-i18n";
 import { pickTitle } from "@/lib/prefs-shared";
 import FadeRow from "@/components/FadeRow";
 import TelegramCard, { TELEGRAM_URL } from "@/components/TelegramCard";
+import CommunityFeed from "@/components/CommunityFeed";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,10 @@ export default async function Home() {
 
         {hasContinue && <MediaGrid title={t("home.trending")} items={trending} href="/browse?sort=trending" ranked />}
         <MediaGrid title={t("home.season")} items={noEcchi(data.seasonal.media)} href="/season" />
+
+        <Reveal>
+          <CommunityFeed viewerId={userId} />
+        </Reveal>
 
         <Reveal>
           <TelegramCard />

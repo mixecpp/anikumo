@@ -8,9 +8,11 @@ import { Avatar } from "./UserMenu";
 import SectionHeading from "./SectionHeading";
 import SpoilerText from "./SpoilerText";
 import ReportButton from "./ReportButton";
+import RoleIcon from "./RoleIcon";
+import type { Role } from "@/lib/roles";
 import { toast } from "@/lib/toast";
 
-type U = { id: string; username: string; avatarColor: string; avatar: string; profilePublic: boolean };
+type U = { id: string; username: string; avatarColor: string; avatar: string; profilePublic: boolean; role?: Role };
 type C = { id: string; body: string; createdAt: string; editedAt: string | null; likeCount: number; liked: boolean; user: U; replies?: C[] };
 
 function ago(iso: string) {
@@ -145,6 +147,7 @@ export default function Comments({ anilistId, episode, loggedIn, hideHeading = f
             ) : (
               <span className="font-medium">{c.user.username}</span>
             )}
+            <RoleIcon role={c.user.role} className="-ml-1" />
             <span className="font-mono text-[11px] text-muted">
               {ago(c.createdAt)}
               {c.editedAt ? " · edited" : ""}

@@ -1,20 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Heart, LoaderCircle, MessageCircle, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
+import { Heart, Link2, LoaderCircle, MessageCircle, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { PostView } from "@/lib/posts";
+import type { Role } from "@/lib/roles";
 import { Avatar } from "../UserMenu";
 import SpoilerText from "../SpoilerText";
 import { usePrefs } from "../PrefsProvider";
 import ReportButton from "../ReportButton";
+import RoleIcon from "../RoleIcon";
 
 const POST_MAX = 500;
 const COMMENT_MAX = 300;
 
-type Comment = { id: string; body: string; createdAt: string; author: { username: string; avatarColor: string; avatar: string }; mine: boolean; canDelete: boolean };
+type Person = { username: string; avatarColor: string; avatar: string; role?: Role };
+type Comment = { id: string; body: string; createdAt: string; author: Person; mine: boolean; canDelete: boolean };
 type Source = { username: string } | { feed: "following" | "everyone" };
 
 async function postAction(body: object) {
@@ -24,7 +28,7 @@ async function postAction(body: object) {
   return res.ok ? json : null;
 }
 
-function ago(iso: string) {
+export function ago(iso: string) {
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
   if (s < 60) return "now";
   if (s < 3600) return `${Math.floor(s / 60)}m`;
@@ -33,37 +37,52 @@ function ago(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
-/** A list of posts (someone's profile, or a feed) with the composer on top when you can post. */
-export default function PostFeed({ source, canPost, empty }: { source: Source; canPost: boolean; empty: string }) {
+/**
+ * A list of posts (someone's profile, or a feed) with the composer on top when you can post.
+ * More posts load on their own as you scroll near the end.
+ */
+export default function PostFeed({ source, canPost, empty, recs = false }: { source: Source; canPost: boolean; empty: string; recs?: boolean }) {
   const [posts, setPosts] = useState<PostView[] | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [staff, setStaff] = useState(false);
-  const qs = "username" in source ? `username=${encodeURIComponent(source.username)}` : `feed=${source.feed}`;
+  const sentinel = useRef<HTMLDivElement>(null);
+  const qs = ("username" in source ? `username=${encodeURIComponent(source.username)}` : `feed=${source.feed}`) + (recs ? "&recs=1" : "");
 
   const load = useCallback(
     async (before?: string) => {
       setLoading(true);
-      const res = await fetch(`/api/posts?${qs}${before ? `&before=${encodeURIComponent(before)}` : ""}`, { cache: "no-store" });
-      const json = res.ok ? await res.json() : { posts: [], next: null };
-      setPosts((p) => (before && p ? [...p, ...json.posts] : json.posts));
-      setNext(json.next);
-      setStaff(json.staff === true);
-      setLoading(false);
+      try {
+        const res = await fetch(`/api/posts?${qs}${before ? `&before=${encodeURIComponent(before)}` : ""}`, { cache: "no-store" });
+        const json = res.ok ? await res.json() : { posts: [], next: null };
+        setPosts((p) => (before && p ? [...p, ...json.posts.filter((n: PostView) => !p.some((o) => o.id === n.id))] : json.posts));
+        setNext(json.next);
+        setStaff(json.staff === true);
+      } finally {
+        setLoading(false);
+      }
     },
     [qs],
   );
   useEffect(() => {
+    setPosts(null);
     load();
   }, [load]);
+
+  // Infinite scroll: fetch the next page when the end of the list comes into view.
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !next || loading) return;
+    const io = new IntersectionObserver((entries) => entries[0].isIntersecting && load(next), { rootMargin: "600px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [next, loading, load]);
 
   return (
     <div className="space-y-3">
       {canPost && <PostComposer onPosted={(p) => setPosts((ps) => [p, ...(ps ?? [])])} />}
       {posts === null ? (
-        <div className="grid h-32 place-items-center">
-          <LoaderCircle className="spin h-5 w-5 text-muted" />
-        </div>
+        <FeedSkeleton />
       ) : posts.length === 0 ? (
         <p className="panel rounded-xl p-8 text-center text-sm text-muted">{empty}</p>
       ) : (
@@ -76,12 +95,33 @@ export default function PostFeed({ source, canPost, empty }: { source: Source; c
         </AnimatePresence>
       )}
       {next && (
-        <div className="pt-2 text-center">
+        <div ref={sentinel} className="pt-2 text-center">
           <button onClick={() => load(next)} disabled={loading} className="btn btn-ghost">
             {loading && <LoaderCircle className="spin h-4 w-4" />} Load more
           </button>
         </div>
       )}
+      {posts && posts.length > 0 && !next && <p className="py-4 text-center font-mono text-[11px] text-muted">You&apos;re all caught up</p>}
+    </div>
+  );
+}
+
+function FeedSkeleton() {
+  return (
+    <div className="space-y-3" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="panel rounded-xl p-4">
+          <div className="flex items-center gap-2.5">
+            <div className="h-[34px] w-[34px] rounded-full bg-white/[0.06]" />
+            <div className="space-y-1.5">
+              <div className="h-3 w-24 rounded bg-white/[0.06]" />
+              <div className="h-2.5 w-12 rounded bg-white/[0.04]" />
+            </div>
+          </div>
+          <div className="mt-3 h-3 w-4/5 rounded bg-white/[0.05]" />
+          <div className="mt-2 h-3 w-3/5 rounded bg-white/[0.04]" />
+        </div>
+      ))}
     </div>
   );
 }
@@ -153,6 +193,7 @@ export function PostComposer({ onPosted }: { onPosted: (p: PostView) => void }) 
             <Plus className="h-3.5 w-3.5" /> Anime
           </button>
         )}
+        <span className="hidden text-[11px] text-muted/70 sm:inline">Wrap spoilers in ||double bars||</span>
         <span className={`ml-auto font-mono text-[11px] ${body.length > POST_MAX - 40 ? "text-amber-300" : "text-muted"}`}>{body.length ? POST_MAX - body.length : ""}</span>
         <button disabled={busy || (!body.trim() && !anime)} className="btn btn-primary !px-4 !py-1.5 !text-xs">
           {busy && <LoaderCircle className="spin h-3.5 w-3.5" />} Post
@@ -209,10 +250,35 @@ function AnimeSearch({ onPick }: { onPick: (a: Anime) => void }) {
   );
 }
 
-export function PostCard({ post: initial, staff = false, onDeleted }: { post: PostView; staff?: boolean; onDeleted: () => void }) {
+/** A name that links to the profile, with the staff badge after it. */
+function Name({ person, className = "" }: { person: Person; className?: string }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1">
+      <Link href={`/u/${person.username}`} className={`truncate font-medium hover:underline ${className}`}>
+        {person.username}
+      </Link>
+      <RoleIcon role={person.role} />
+    </span>
+  );
+}
+
+export function PostCard({
+  post: initial,
+  staff = false,
+  onDeleted,
+  defaultOpen = false,
+  redirectOnDelete = false,
+}: {
+  post: PostView;
+  staff?: boolean;
+  onDeleted?: () => void;
+  defaultOpen?: boolean;
+  redirectOnDelete?: boolean;
+}) {
   const { loggedIn } = usePrefs();
+  const router = useRouter();
   const [post, setPost] = useState(initial);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const ref = useRef<HTMLElement>(null);
 
   // Linked straight to this post (e.g. from a notification): open its comments and scroll to it.
@@ -233,23 +299,36 @@ export function PostCard({ post: initial, staff = false, onDeleted }: { post: Po
 
   async function remove() {
     if (!confirm(post.mine ? "Delete this post?" : `Remove this post by ${post.author.username}?`)) return;
-    if (await postAction({ action: "delete", id: post.id })) onDeleted();
+    if (!(await postAction({ action: "delete", id: post.id }))) return;
+    onDeleted?.();
+    if (redirectOnDelete) router.push("/feed");
+  }
+
+  async function share() {
+    const url = `${location.origin}/post/${post.id}`;
+    try {
+      if (navigator.share && matchMedia("(hover: none)").matches) await navigator.share({ url, title: `${post.author.username} on AniKumo` });
+      else {
+        await navigator.clipboard.writeText(url);
+        toast("Link copied", "info");
+      }
+    } catch {}
   }
 
   return (
     <article ref={ref} id={`post-${post.id}`} className="panel group scroll-mt-24 rounded-xl p-4">
       <header className="flex items-center gap-2.5">
         <Link href={`/u/${post.author.username}`} className="shrink-0">
-          <Avatar name={post.author.username} color={post.author.avatarColor} avatar={post.author.avatar} size={34} />
+          <Avatar name={post.author.username} color={post.author.avatarColor} avatar={post.author.avatar} size={36} />
         </Link>
         <div className="min-w-0 flex-1">
-          <Link href={`/u/${post.author.username}`} className="text-sm font-medium hover:underline">
-            {post.author.username}
-          </Link>
-          <div className="font-mono text-[11px] text-muted" suppressHydrationWarning>
+          <div className="flex min-w-0 items-center text-sm">
+            <Name person={post.author} />
+          </div>
+          <Link href={`/post/${post.id}`} className="font-mono text-[11px] text-muted hover:text-fg" suppressHydrationWarning>
             {ago(post.createdAt)}
             {post.anime?.recommend && " · recommends"}
-          </div>
+          </Link>
         </div>
         {!post.mine && loggedIn && <ReportButton targetType="post" targetId={post.id} className="opacity-0 transition group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100" />}
         {(post.mine || staff) && (
@@ -264,40 +343,58 @@ export function PostCard({ post: initial, staff = false, onDeleted }: { post: Po
         )}
       </header>
 
-      {post.body && <SpoilerText text={post.body} className="mt-2.5 text-sm leading-relaxed text-fg/90" />}
+      {post.body && <SpoilerText text={post.body} className="mt-2.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-fg/90" />}
 
-      {post.anime && (
-        <Link href={`/anime/${post.anime.id}`} className="mt-3 flex items-center gap-3 rounded-lg border border-white/[0.07] bg-white/[0.02] p-2 transition-colors hover:border-white/15">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={post.anime.cover} alt="" className="h-16 w-11 rounded object-cover" />
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium">{post.anime.title}</div>
-            {post.anime.recommend && (
-              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] text-accent">
-                <Sparkles className="h-3 w-3" /> Recommended
-              </span>
-            )}
-          </div>
-        </Link>
-      )}
+      {post.anime && <AnimeAttachment anime={post.anime} />}
 
-      <div className="mt-3 flex items-center gap-4 text-xs text-muted">
-        <button onClick={like} className={`flex items-center gap-1.5 transition-colors ${post.liked ? "text-accent" : "hover:text-fg"}`} aria-pressed={post.liked} aria-label="Like">
+      <div className="mt-3 flex items-center gap-1 text-xs text-muted">
+        <button onClick={like} className={`-ml-2 flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/[0.05] ${post.liked ? "text-accent" : "hover:text-fg"}`} aria-pressed={post.liked} aria-label="Like">
           <Heart className={`h-4 w-4 ${post.liked ? "fill-current" : ""}`} /> {post.likes || ""}
         </button>
-        <button onClick={() => setOpen((o) => !o)} className={`flex items-center gap-1.5 transition-colors ${open ? "text-fg" : "hover:text-fg"}`} aria-expanded={open}>
+        <button onClick={() => setOpen((o) => !o)} className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/[0.05] ${open ? "text-fg" : "hover:text-fg"}`} aria-expanded={open}>
           <MessageCircle className="h-4 w-4" /> {post.comments || ""} <span className="sr-only">comments</span>
+        </button>
+        <button onClick={share} className="ml-auto flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/[0.05] hover:text-fg" aria-label="Copy link to post" title="Copy link">
+          <Link2 className="h-4 w-4" />
         </button>
       </div>
 
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+          <motion.div id="comments" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
             <Thread postId={post.id} loggedIn={loggedIn} onCount={(n) => setPost((p) => ({ ...p, comments: n }))} />
           </motion.div>
         )}
       </AnimatePresence>
     </article>
+  );
+}
+
+/** The attached anime. Recommendations get a bigger card with the cover blurred behind it. */
+function AnimeAttachment({ anime }: { anime: NonNullable<PostView["anime"]> }) {
+  if (!anime.recommend)
+    return (
+      <Link href={`/anime/${anime.id}`} className="mt-3 flex items-center gap-3 rounded-lg border border-white/[0.07] bg-white/[0.02] p-2 transition-colors hover:border-white/15">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={anime.cover} alt="" className="h-14 w-10 rounded object-cover" />
+        <div className="min-w-0 truncate text-sm font-medium">{anime.title}</div>
+      </Link>
+    );
+  return (
+    <Link href={`/anime/${anime.id}`} className="group/a relative mt-3 flex items-center gap-4 overflow-hidden rounded-xl border border-white/[0.08] p-3 transition-colors hover:border-white/20">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={anime.cover} alt="" aria-hidden className="absolute inset-0 h-full w-full scale-125 object-cover opacity-25 blur-2xl" />
+      <div className="absolute inset-0 bg-gradient-to-r from-bg/70 to-bg/30" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={anime.cover} alt="" className="relative h-24 w-16 shrink-0 rounded-lg object-cover shadow-lg transition duration-300 group-hover/a:scale-[1.03]" />
+      <div className="relative min-w-0">
+        <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] text-accent">
+          <Sparkles className="h-3 w-3" /> Recommended
+        </span>
+        <div className="mt-1.5 line-clamp-2 text-[15px] font-semibold leading-snug">{anime.title}</div>
+        <div className="mt-1 text-xs text-muted transition-colors group-hover/a:text-fg">View anime →</div>
+      </div>
+    </Link>
   );
 }
 
@@ -345,10 +442,8 @@ function Thread({ postId, loggedIn, onCount }: { postId: string; loggedIn: boole
                 <Avatar name={c.author.username} color={c.author.avatarColor} avatar={c.author.avatar} size={26} />
               </Link>
               <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2 text-[13px]">
-                  <Link href={`/u/${c.author.username}`} className="font-medium hover:underline">
-                    {c.author.username}
-                  </Link>
+                <div className="flex items-center gap-2 text-[13px]">
+                  <Name person={c.author} />
                   <span className="font-mono text-[10px] text-muted" suppressHydrationWarning>
                     {ago(c.createdAt)}
                   </span>
@@ -359,7 +454,7 @@ function Thread({ postId, loggedIn, onCount }: { postId: string; loggedIn: boole
                     </button>
                   )}
                 </div>
-                <SpoilerText text={c.body} className="text-sm leading-relaxed text-fg/85" />
+                <SpoilerText text={c.body} className="break-words text-sm leading-relaxed text-fg/85" />
               </div>
             </li>
           ))}

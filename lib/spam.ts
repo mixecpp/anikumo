@@ -3,8 +3,8 @@ import { checkText } from "./automod";
 import { rateLimit } from "./rate-limit";
 
 /**
- * One gate for everything people write in public: episode/show comments, reviews, posts and
- * post comments. Returns an error to show, or null when it's fine to post.
+ * One gate for everything people write in public: episode/show comments, reviews, posts,
+ * post comments and profile comments. Returns an error to show, or null when it's fine to post.
  *
  *  - banned or muted accounts can't post (muted people can still log in and watch)
  *  - slurs and harassment are blocked (lib/automod)
@@ -13,7 +13,7 @@ import { rateLimit } from "./rate-limit";
  *  - max 2 links, never invite links
  *  - no posting the exact same thing again within 10 minutes
  */
-export type WriteKind = "comment" | "review" | "post" | "post_comment";
+export type WriteKind = "comment" | "review" | "post" | "post_comment" | "profile_comment";
 
 const LINK = /\b(?:https?:\/\/|www\.)\S+/gi;
 const INVITE = /\b(?:discord\.gg|discord(?:app)?\.com\/invite|t\.me|chat\.whatsapp\.com)\b/i;
@@ -60,7 +60,9 @@ async function recentSame(userId: string, kind: WriteKind, compact: string) {
         ? []
         : kind === "post"
           ? await prisma.post.findMany({ where: { userId, createdAt: { gt: since } }, select, take: 5, orderBy: { createdAt: "desc" } })
-          : await prisma.postComment.findMany({ where: { userId, createdAt: { gt: since } }, select, take: 5, orderBy: { createdAt: "desc" } });
+          : kind === "post_comment"
+            ? await prisma.postComment.findMany({ where: { userId, createdAt: { gt: since } }, select, take: 5, orderBy: { createdAt: "desc" } })
+            : await prisma.profileComment.findMany({ where: { userId, createdAt: { gt: since } }, select, take: 5, orderBy: { createdAt: "desc" } });
   return rows.some((r) => squash(r.body) === compact);
 }
 

@@ -10,6 +10,14 @@ export const VISIBILITIES: { value: Visibility; label: string; hint: string }[] 
   { value: "private", label: "Only me", hint: "Nobody else can open it" },
 ];
 
+export type WallSetting = "everyone" | "followers" | "off";
+export const WALL_SETTINGS: { value: WallSetting; label: string; hint: string }[] = [
+  { value: "everyone", label: "Everyone", hint: "Anyone who can see your profile" },
+  { value: "followers", label: "Followers", hint: "Only people who follow you" },
+  { value: "off", label: "Nobody", hint: "Hide comments on your profile" },
+];
+export const isWallSetting = (v: unknown): v is WallSetting => v === "everyone" || v === "followers" || v === "off";
+
 export const SECTIONS = {
   posts: "Posts",
   stats: "Stats (watch time, episodes, streaks)",
