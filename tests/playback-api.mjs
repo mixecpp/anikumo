@@ -34,7 +34,7 @@ try {
     const password = randomUUID();
     const user = await prisma.user.create({ data: { username, passwordHash: await bcrypt.hash(password, 4) } });
     users.push(user);
-    const login = await api("/api/auth/login", null, "POST", { username, password });
+    const login = await api("/api/auth/login", null, "POST", { username, password, captcha: "XXXX.DUMMY.TOKEN.XXXX" });
     assert.equal(login.status, 200); user.cookie = login.cookie;
   }
   const [a,b] = users;

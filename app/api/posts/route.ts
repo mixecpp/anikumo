@@ -5,6 +5,10 @@ import { notify } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rate-limit";
 import { getSnapshots } from "@/lib/media";
 import { COMMENT_MAX, POST_MAX, getPost, listPosts } from "@/lib/posts";
+import { requireStaff } from "@/lib/auth";
+import { logAdmin } from "@/lib/admin";
+import { checkWrite, writeStatus } from "@/lib/spam";
+import { removeAndNotify } from "@/lib/reports";
 
 const PERSON = { select: { username: true, avatarColor: true, avatar: true } } as const;
 
@@ -16,6 +20,7 @@ const PERSON = { select: { username: true, avatarColor: true, avatar: true } } a
 export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
   const me = await requireUserId();
+  const staff = me ? !!(await requireStaff()) : false;
   const id = sp.get("id");
   if (id) {
     const post = await getPost(id, me);
@@ -23,14 +28,15 @@ export async function GET(req: Request) {
     const comments = await prisma.postComment.findMany({ where: { postId: id }, orderBy: { createdAt: "asc" }, take: 200, include: { user: PERSON } });
     return NextResponse.json({
       post: post.view,
-      comments: comments.map((c) => ({ id: c.id, body: c.body, createdAt: c.createdAt, author: c.user, mine: c.userId === me, canDelete: c.userId === me || post.row.userId === me })),
+      staff,
+      comments: comments.map((c) => ({ id: c.id, body: c.body, createdAt: c.createdAt, author: c.user, mine: c.userId === me, canDelete: c.userId === me || post.row.userId === me || staff })),
     });
   }
   const before = sp.get("before") && !Number.isNaN(Date.parse(sp.get("before")!)) ? new Date(sp.get("before")!) : null;
   const feed = sp.get("feed");
   const result = await listPosts({ viewerId: me, before, scope: feed === "following" ? "following" : feed === "everyone" ? "everyone" : "user", username: sp.get("username") ?? undefined });
   if (!result) return fail("These posts are private", 404);
-  return NextResponse.json(result, { headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json({ ...result, staff }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 /**
@@ -52,6 +58,8 @@ export async function POST(req: Request) {
     const anilistId = Number(b.anilistId) || null;
     if (!body && !anilistId) return fail("Write something or pick an anime");
     if (body.length > POST_MAX) return fail(`Posts are up to ${POST_MAX} characters`);
+    const problem = await checkWrite(userId, "post", body);
+    if (problem) return fail(problem, writeStatus(problem));
     let anime = { animeTitle: "", animeCover: "" };
     if (anilistId) {
       // Titles and covers come from AniList, not the client.
@@ -68,6 +76,8 @@ export async function POST(req: Request) {
     if (!rateLimit(`postcomment:${userId}`, 20, 5 * 60_000).ok) return fail("Slow down a little", 429);
     const body = String(b.body ?? "").trim();
     if (!body || body.length > COMMENT_MAX) return fail(`Comments are 1–${COMMENT_MAX} characters`);
+    const problem = await checkWrite(userId, "post_comment", body);
+    if (problem) return fail(problem, writeStatus(problem));
     const post = await getPost(id, userId);
     if (!post) return fail("Post not found", 404);
     const comment = await prisma.postComment.create({ data: { postId: id, userId, body }, include: { user: PERSON } });
@@ -95,13 +105,24 @@ export async function POST(req: Request) {
 
   if (b.action === "delete") {
     const { count } = await prisma.post.deleteMany({ where: { id, userId } });
-    return count ? NextResponse.json({ ok: true }) : fail("Post not found", 404);
+    if (count) return NextResponse.json({ ok: true });
+    const staff = await requireStaff();
+    const post = staff ? await prisma.post.findUnique({ where: { id }, include: { user: { select: { username: true } } } }) : null;
+    if (!staff || !post) return fail("Post not found", 404);
+    await removeAndNotify("post", id);
+    await logAdmin(staff.id, "Deleted post", post.user.username, post.body.slice(0, 200));
+    return NextResponse.json({ ok: true });
   }
 
   if (b.action === "deleteComment") {
-    const c = await prisma.postComment.findUnique({ where: { id }, include: { post: { select: { userId: true } } } });
-    if (!c || (c.userId !== userId && c.post.userId !== userId)) return fail("Comment not found", 404);
-    await prisma.postComment.delete({ where: { id } });
+    const c = await prisma.postComment.findUnique({ where: { id }, include: { post: { select: { userId: true } }, user: { select: { username: true } } } });
+    const own = !!c && (c.userId === userId || c.post.userId === userId);
+    const staff = c && !own ? await requireStaff() : null;
+    if (!c || (!own && !staff)) return fail("Comment not found", 404);
+    if (staff) {
+      await removeAndNotify("post_comment", id);
+      await logAdmin(staff.id, "Deleted post comment", c.user.username, c.body.slice(0, 200));
+    } else await prisma.postComment.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   }
 

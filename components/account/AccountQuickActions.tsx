@@ -9,7 +9,7 @@ import { NewDot, useChangelogUnseen } from "../WhatsNew";
 import FadeRow from "../FadeRow";
 
 /** Phones/tablets have no top-right account menu, so its extra actions live here. */
-export default function AccountQuickActions({ username, profilePublic, isAdmin, latestChangelog }: { username: string; profilePublic: boolean; isAdmin: boolean; latestChangelog: string | null }) {
+export default function AccountQuickActions({ username, profilePublic, isAdmin, isModerator = false, latestChangelog }: { username: string; profilePublic: boolean; isAdmin: boolean; isModerator?: boolean; latestChangelog: string | null }) {
   const router = useRouter();
   const t = useT();
   const unseen = useChangelogUnseen(latestChangelog);
@@ -32,11 +32,15 @@ export default function AccountQuickActions({ username, profilePublic, isAdmin, 
           <Globe className="h-3.5 w-3.5" /> {t("menu.profile")}
         </Link>
       )}
-      {isAdmin && (
+      {isAdmin ? (
         <Link href="/admin" className={chip}>
           <Shield className="h-3.5 w-3.5" /> {t("menu.admin")}
         </Link>
-      )}
+      ) : isModerator ? (
+        <Link href="/admin/moderation" className={chip}>
+          <Shield className="h-3.5 w-3.5" /> Moderation
+        </Link>
+      ) : null}
       <button onClick={logout} className={`${chip} text-muted`}>
         <LogOut className="h-3.5 w-3.5" /> {t("menu.logout")}
       </button>

@@ -70,6 +70,7 @@ function Composer({ onSubmit, placeholder, autoFocus, initial = "", onCancel, co
 export default function Comments({ anilistId, episode, loggedIn, hideHeading = false }: { anilistId: number; episode?: number; loggedIn: boolean; hideHeading?: boolean }) {
   const [comments, setComments] = useState<C[] | null>(null);
   const [me, setMe] = useState<string | null>(null);
+  const [staff, setStaff] = useState(false);
   const [sort, setSort] = useState<"new" | "top">("new");
   const [replying, setReplying] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -79,6 +80,7 @@ export default function Comments({ anilistId, episode, loggedIn, hideHeading = f
     const json = await fetch(`/api/comments?${qs}`).then((r) => r.json()).catch(() => ({}));
     setComments(json.comments ?? []);
     setMe(json.me ?? null);
+    setStaff(json.staff === true);
   }, [qs]);
   useEffect(() => {
     load();
@@ -171,7 +173,14 @@ export default function Comments({ anilistId, episode, loggedIn, hideHeading = f
                   <button onClick={() => remove(c.id)} className="rounded p-1 hover:text-fg" aria-label="Delete comment"><Trash2 className="h-3.5 w-3.5" /></button>
                 </>
               ) : (
-                loggedIn && <ReportButton targetType="comment" targetId={c.id} />
+                <>
+                  {loggedIn && <ReportButton targetType="comment" targetId={c.id} />}
+                  {staff && (
+                    <button onClick={() => confirm(`Remove this comment by ${c.user.username}?`) && remove(c.id)} className="rounded p-1 text-red-300/80 hover:text-red-300" aria-label="Remove comment (moderator)" title="Remove (moderator)">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </>
               )}
             </span>
           </div>

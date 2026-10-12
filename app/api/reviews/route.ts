@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { fail, readJson, requireUserId, toInt } from "@/lib/http";
 import { rateLimit } from "@/lib/rate-limit";
+import { checkWrite, writeStatus } from "@/lib/spam";
 
 /** GET ?anilistId= → reviews sorted by helpful votes, plus the viewer's own review. */
 export async function GET(req: Request) {
@@ -36,6 +37,8 @@ export async function POST(req: Request) {
   if (!anilistId) return fail("anilistId required");
   if (!score || score < 1 || score > 10) return fail("Pick a score from 1 to 10");
   if (body.length < 20 || body.length > 3000) return fail("Reviews need 20–3000 characters");
+  const problem = await checkWrite(userId, "review", title, body);
+  if (problem) return fail(problem, writeStatus(problem));
 
   const review = await prisma.review.upsert({
     where: { userId_anilistId: { userId, anilistId } },

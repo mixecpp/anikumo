@@ -34,6 +34,7 @@ yarn-error.log*
 # server in /etc/anikumo/anikumo.env, which overrides it. Never commit .env.local / .env.production.
 .env*
 !.env
+!.env.development
 
 # vercel
 .vercel

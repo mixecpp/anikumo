@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { checkUsername, createSession } from "@/lib/auth";
 import { fail, readJson } from "@/lib/http";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { verifyCaptcha } from "@/lib/captcha";
 import { issueRecoveryKey } from "@/lib/auth-flows";
 
 const COLORS = ["#f6a57c", "#fb7185", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"];
@@ -14,6 +15,7 @@ export async function POST(req: Request) {
   if (!limit.ok) return fail(`Too many sign-ups from this network. Try again in ${Math.ceil(limit.retryAfter / 60)} min.`, 429);
 
   const body = await readJson<{ username: string; password: string }>(req);
+  if (!(await verifyCaptcha((body as { captcha?: unknown }).captcha, clientIp(req.headers)))) return fail("The human check didn't pass — try again", 400);
   const username = String(body.username ?? "").trim();
   const password = String(body.password ?? "");
 

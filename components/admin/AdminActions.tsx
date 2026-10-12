@@ -27,11 +27,13 @@ export function ReportActions({ reportId }: { reportId: string }) {
   );
 }
 
-export function DeleteContent({ kind, id }: { kind: "comment" | "review"; id: string }) {
+const DELETE_ACTION = { comment: "deleteComment", review: "deleteReview", post: "deletePost", post_comment: "deletePostComment" } as const;
+
+export function DeleteContent({ kind, id }: { kind: keyof typeof DELETE_ACTION; id: string }) {
   const router = useRouter();
   return (
     <ConfirmButton
-      onConfirm={async () => (await act({ action: kind === "comment" ? "deleteComment" : "deleteReview", id })) && (toast("Deleted", "info"), router.refresh())}
+      onConfirm={async () => (await act({ action: DELETE_ACTION[kind], id })) && (toast("Deleted", "info"), router.refresh())}
       label="Delete"
       confirmLabel="Confirm"
       className="text-xs text-muted hover:text-red-300"

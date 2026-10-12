@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, roleOf } from "@/lib/auth";
 import { fail } from "@/lib/http";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 const PAGE = 25;
 
-/** GET ?q=&filter=all|admins|banned&page= → paginated users with activity counts. */
+/** GET ?q=&filter=all|staff|banned|muted&page= → paginated users with their role and activity counts. */
 export async function GET(req: Request) {
   if (!(await requireAdmin())) return fail("Admins only", 403);
   const sp = new URL(req.url).searchParams;
@@ -15,7 +15,13 @@ export async function GET(req: Request) {
   const page = Math.max(0, Number(sp.get("page")) || 0);
   const where = {
     ...(q ? { username: { contains: q } } : {}),
-    ...(filter === "admins" ? { isAdmin: true } : filter === "banned" ? { bannedAt: { not: null } } : {}),
+    ...(filter === "staff" || filter === "admins"
+      ? { OR: [{ isAdmin: true }, { isModerator: true }] }
+      : filter === "banned"
+        ? { bannedAt: { not: null } }
+        : filter === "muted"
+          ? { mutedUntil: { gt: new Date() } }
+          : {}),
   };
   const [total, users] = await Promise.all([
     prisma.user.count({ where }),
@@ -31,6 +37,9 @@ export async function GET(req: Request) {
         avatar: true,
         createdAt: true,
         isAdmin: true,
+        isModerator: true,
+        mutedUntil: true,
+        muteReason: true,
         bannedAt: true,
         banReason: true,
         totpEnabled: true,
@@ -43,6 +52,6 @@ export async function GET(req: Request) {
   return NextResponse.json({
     total,
     pageSize: PAGE,
-    users: users.map(({ sessions, _count, ...u }) => ({ ...u, lastSeenAt: sessions[0]?.lastSeenAt ?? null, counts: _count })),
+    users: users.map(({ sessions, _count, ...u }) => ({ ...u, role: roleOf(u), muted: !!u.mutedUntil && u.mutedUntil > new Date(), lastSeenAt: sessions[0]?.lastSeenAt ?? null, counts: _count })),
   });
 }

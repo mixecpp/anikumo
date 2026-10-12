@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PRIVATE } from "@/lib/seo";
 import { redirect } from "next/navigation";
-import { getUser, isAdminUser } from "@/lib/auth";
+import { getUser, isAdminUser, roleOf } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import AccountQuickActions from "@/components/account/AccountQuickActions";
 import { Avatar } from "@/components/UserMenu";
@@ -28,7 +28,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
           </p>
         </div>
       </header>
-      <AccountQuickActions username={user.username} profilePublic={!!extra?.profilePublic} isAdmin={isAdminUser(user)} latestChangelog={latest?.createdAt.toISOString() ?? null} />
+      <AccountQuickActions username={user.username} profilePublic={!!extra?.profilePublic} isAdmin={isAdminUser(user)} isModerator={roleOf(user) === "moderator"} latestChangelog={latest?.createdAt.toISOString() ?? null} />
       <AccountNav />
       <div className="pt-8">{children}</div>
     </div>

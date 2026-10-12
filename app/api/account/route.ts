@@ -1,12 +1,13 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { checkUsername, destroySession, getSession, revokeSessions } from "@/lib/auth";
+import { checkUsername, destroySession, getSession, revokeSessions, isOwnerName } from "@/lib/auth";
 import { fail, readJson } from "@/lib/http";
 import { isDiscordWebhook } from "@/lib/notifications";
 import { encrypt } from "@/lib/crypto";
 import { deleteAvatarFile } from "@/lib/uploads";
 import { BANNER_URL, isVisibility, serializeSections } from "@/lib/privacy-shared";
+import { checkText } from "@/lib/automod";
 
 type Body = {
   avatarColor: string; avatar: string;
@@ -44,12 +45,19 @@ export async function PATCH(req: Request) {
   if (body.username !== undefined) {
     const username = String(body.username).trim();
     if (username !== user.username) {
+      // Owner protection is tied to the name in ADMIN_USERNAMES, so owners keep their name.
+      if (isOwnerName(user.username)) return fail("The site owner's username can't be changed", 403);
       const problem = await checkUsername(username, { exceptUserId: userId, rename: true });
       if (problem) return fail(problem, problem.includes("taken") ? 409 : 400);
       data.username = username;
     }
   }
-  if (body.bio !== undefined) data.bio = String(body.bio).trim().slice(0, 300);
+  if (body.bio !== undefined) {
+    const bio = String(body.bio).trim().slice(0, 300);
+    const blocked = checkText(bio);
+    if (blocked) return fail(blocked);
+    data.bio = bio;
+  }
   // Older clients send profilePublic; newer ones send profileVisibility. profilePublic always mirrors "everyone".
   if (body.profilePublic !== undefined) {
     data.profilePublic = body.profilePublic === true;
@@ -66,7 +74,7 @@ export async function PATCH(req: Request) {
   }
   if (body.profileBanner !== undefined) {
     const url = String(body.profileBanner ?? "").trim();
-    if (url && !BANNER_URL.test(url)) return fail("Pick a banner from an anime");
+    if (url && (url.length > 300 || !BANNER_URL.test(url))) return fail("Pick a banner from an anime");
     data.profileBanner = url;
   }
   if (body.discordWebhook !== undefined) {
@@ -98,6 +106,7 @@ export async function DELETE(req: Request) {
   if (!(await bcrypt.compare(String(body.password ?? ""), user.passwordHash))) {
     return fail("Password is incorrect", 401);
   }
+  if (isOwnerName(user.username)) return fail("The site owner account can't be deleted", 403);
   await destroySession();
   await deleteAvatarFile(user.avatar);
   await prisma.$transaction([

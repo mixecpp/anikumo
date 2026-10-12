@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { getUser, isAdminUser } from "@/lib/auth";
+import { getUser, isAdminUser, roleOf } from "@/lib/auth";
 import { navLinks } from "@/lib/nav";
 import { syncEpisodeAlerts, unreadCount } from "@/lib/notifications";
 import SearchBox from "./SearchBox";
@@ -35,7 +35,7 @@ export default async function Navbar({ libraryEnabled }: { libraryEnabled: boole
         <div className="hidden lg:block">
         <UserMenu
           latestChangelog={latest?.createdAt.toISOString() ?? null}
-          user={user ? { username: user.username, avatarColor: user.avatarColor, avatar: user.avatar, isAdmin: isAdminUser(user), profilePublic } : null}
+          user={user ? { username: user.username, avatarColor: user.avatarColor, avatar: user.avatar, isAdmin: isAdminUser(user), isModerator: roleOf(user) === "moderator", profilePublic } : null}
         />
         </div>
       </nav>

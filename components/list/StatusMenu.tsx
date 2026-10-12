@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { LIST_STATUSES, STATUS_DOT, STATUS_LABEL, type ListStatus } from "@/lib/list-shared";
+import { FloatingPortal, useDismiss, useFloating } from "../ui/Floating";
 
 /** "Add to list" / current-status button with a dropdown of statuses. */
 export default function StatusMenu({
@@ -21,18 +22,9 @@ export default function StatusMenu({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  const menu = useRef<HTMLDivElement>(null);
+  const floating = useFloating(ref, open, { align, height: 260, width: 192 });
+  useDismiss(open, () => setOpen(false), [ref, menu]);
 
   return (
     <div ref={ref} className="relative">
@@ -50,15 +42,18 @@ export default function StatusMenu({
         {status ? STATUS_LABEL[status] : "Add to list"}
         <ChevronDown className={`h-3.5 w-3.5 text-muted transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
+      <FloatingPortal>
       <AnimatePresence>
-        {open && (
+        {open && floating && (
           <motion.div
+            ref={menu}
             role="menu"
+            style={floating}
             initial={{ opacity: 0, y: -4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.13 }}
-            className={`glass-strong absolute z-50 mt-1.5 w-48 rounded-xl p-1 ${align === "right" ? "right-0 origin-top-right" : "left-0 origin-top-left"}`}
+            className="glass-strong rounded-xl p-1"
           >
             {LIST_STATUSES.map((s) => (
               <button
@@ -95,6 +90,7 @@ export default function StatusMenu({
           </motion.div>
         )}
       </AnimatePresence>
+      </FloatingPortal>
     </div>
   );
 }

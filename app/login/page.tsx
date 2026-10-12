@@ -6,6 +6,7 @@ import { PRIVATE } from "@/lib/seo";
 import AuthForm from "@/components/AuthForm";
 import { getUserId } from "@/lib/auth";
 import { authCovers } from "@/lib/auth-covers";
+import { captchaSiteKey } from "@/lib/captcha";
 
 export const metadata: Metadata = { title: "Log in", ...PRIVATE };
 
@@ -13,7 +14,7 @@ export default async function LoginPage() {
   if (await getUserId()) redirect("/");
   return (
     <Suspense>
-      <AuthForm mode="login" covers={await authCovers()} />
+      <AuthForm mode="login" covers={await authCovers()} captchaKey={captchaSiteKey()} />
     </Suspense>
   );
 }

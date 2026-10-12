@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown } from "lucide-react";
+import { FloatingPortal, useDismiss, useFloating } from "./ui/Floating";
 
 export type SelectOption = { value: string; label: string; hint?: string };
 
@@ -29,7 +30,10 @@ export default function Select({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const floating = useFloating(button, open, { align, height: 288 });
+  useDismiss(open, () => setOpen(false), [ref, listRef]);
   const typed = useRef({ text: "", at: 0 });
   const id = useId();
   const current = options.find((o) => o.value === value);
@@ -37,9 +41,6 @@ export default function Select({
   useEffect(() => {
     if (!open) return;
     setActive(Math.max(0, options.findIndex((o) => o.value === value)));
-    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
   }, [open, options, value]);
 
   useEffect(() => {
@@ -81,6 +82,7 @@ export default function Select({
   return (
     <div ref={ref} className={`relative ${className}`}>
       <button
+        ref={button}
         type="button"
         onClick={() => setOpen((o) => !o)}
         onKeyDown={onKey}
@@ -94,8 +96,9 @@ export default function Select({
         <span className={`flex-1 truncate ${current ? "" : "text-muted"}`}>{current?.label ?? placeholder}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
+      <FloatingPortal>
       <AnimatePresence>
-        {open && (
+        {open && floating && (
           <motion.ul
             ref={listRef}
             id={id}
@@ -105,7 +108,8 @@ export default function Select({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.14 }}
-            className={`glass-strong thin-scroll absolute z-50 mt-1.5 max-h-72 min-w-full overflow-y-auto rounded-xl p-1 ${align === "right" ? "right-0 origin-top-right" : "left-0 origin-top-left"}`}
+            style={{ ...floating, maxHeight: Math.min(288, Number(floating.maxHeight)) }}
+            className="glass-strong thin-scroll overflow-y-auto rounded-xl p-1"
           >
             {options.map((o, i) => {
               const selected = o.value === value;
@@ -131,6 +135,7 @@ export default function Select({
           </motion.ul>
         )}
       </AnimatePresence>
+      </FloatingPortal>
     </div>
   );
 }

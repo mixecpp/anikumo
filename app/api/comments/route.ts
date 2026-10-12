@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { fail, readJson, requireUserId, toInt } from "@/lib/http";
 import { notify } from "@/lib/notifications";
+import { requireStaff } from "@/lib/auth";
+import { logAdmin } from "@/lib/admin";
+import { checkEdit, checkWrite, writeStatus } from "@/lib/spam";
+import { removeAndNotify } from "@/lib/reports";
 
 const USER = { select: { id: true, username: true, avatarColor: true, avatar: true, profilePublic: true } } as const;
 
@@ -47,7 +51,9 @@ export async function GET(req: Request) {
     include: { ...include, replies: { orderBy: { createdAt: "asc" }, take: 50, include } },
   });
   const comments = rows.map((c) => ({ ...shape(c, me), replies: c.replies.map((r) => shape(r, me)) }));
-  return NextResponse.json({ comments, me });
+  // Moderators get a delete button on everyone's comments.
+  const staff = me ? !!(await requireStaff()) : false;
+  return NextResponse.json({ comments, me, staff });
 }
 
 export async function POST(req: Request) {
@@ -68,8 +74,8 @@ export async function POST(req: Request) {
     if (parent.parentId) parent = await prisma.comment.findUnique({ where: { id: parent.parentId }, select: { id: true, userId: true, parentId: true } });
   }
 
-  const recent = await prisma.comment.count({ where: { userId, createdAt: { gt: new Date(Date.now() - 60_000) } } });
-  if (recent >= 5) return fail("Slow down — max 5 comments per minute", 429);
+  const problem = await checkWrite(userId, "comment", body);
+  if (problem) return fail(problem, writeStatus(problem));
 
   const comment = await prisma.comment.create({
     data: { userId, anilistId, episode, body, parentId: parent?.id ?? null },
@@ -96,6 +102,8 @@ export async function PATCH(req: Request) {
   const b = await readJson<{ id: string; body: string }>(req);
   const body = String(b.body ?? "").trim();
   if (!body || body.length > 2000) return fail("Comment must be 1–2000 characters");
+  const problem = await checkEdit(userId, body);
+  if (problem) return fail(problem, writeStatus(problem));
   const { count } = await prisma.comment.updateMany({ where: { id: String(b.id ?? ""), userId }, data: { body, editedAt: new Date() } });
   if (!count) return fail("Not found", 404);
   return NextResponse.json({ ok: true });
@@ -107,6 +115,12 @@ export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return fail("id required");
   const { count } = await prisma.comment.deleteMany({ where: { id, userId } });
-  if (!count) return fail("Not found", 404);
+  if (count) return NextResponse.json({ ok: true });
+  // Not yours: moderators can remove anyone's.
+  const staff = await requireStaff();
+  const comment = staff ? await prisma.comment.findUnique({ where: { id }, include: { user: { select: { username: true } } } }) : null;
+  if (!staff || !comment) return fail("Not found", 404);
+  await removeAndNotify("comment", id);
+  await logAdmin(staff.id, "Deleted comment", comment.user.username, comment.body.slice(0, 200));
   return NextResponse.json({ ok: true });
 }

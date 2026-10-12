@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ListPlus, LoaderCircle, Plus } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { FloatingPortal, useDismiss, useFloating } from "../ui/Floating";
 
 type L = { id: string; title: string; count: number; contains: boolean };
 
@@ -14,6 +15,9 @@ export default function CustomListsMenu({ anilistId, title, coverImage }: { anil
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const floating = useFloating(ref, open, { align: "right", height: 320, width: 256 });
+  useDismiss(open, () => setOpen(false), [ref, menu]);
 
   useEffect(() => {
     if (!open) return;
@@ -21,9 +25,6 @@ export default function CustomListsMenu({ anilistId, title, coverImage }: { anil
       .then((r) => r.json())
       .then((j) => setLists(j.lists ?? []))
       .catch(() => setLists([]));
-    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
   }, [open, anilistId]);
 
   async function post(body: object) {
@@ -58,14 +59,17 @@ export default function CustomListsMenu({ anilistId, title, coverImage }: { anil
       <button onClick={() => setOpen((o) => !o)} className="btn btn-ghost btn-icon" aria-label="Add to a custom list" title="Add to a custom list" aria-expanded={open}>
         <ListPlus className="h-4 w-4" />
       </button>
+      <FloatingPortal>
       <AnimatePresence>
-        {open && (
+        {open && floating && (
           <motion.div
+            ref={menu}
+            style={floating}
             initial={{ opacity: 0, y: -4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.13 }}
-            className="glass-strong absolute left-0 z-50 mt-1.5 w-64 origin-top-left rounded-xl p-1 sm:left-auto sm:right-0 sm:origin-top-right"
+            className="glass-strong rounded-xl p-1"
           >
             <div className="label px-2.5 pb-1 pt-1.5">Your lists</div>
             <div className="thin-scroll max-h-56 overflow-y-auto">
@@ -96,6 +100,7 @@ export default function CustomListsMenu({ anilistId, title, coverImage }: { anil
           </motion.div>
         )}
       </AnimatePresence>
+      </FloatingPortal>
     </div>
   );
 }

@@ -1,121 +1,322 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Ban, Flag, Inbox, ShieldCheck, VolumeX } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { requireAdminPage } from "@/lib/auth";
-import { DeleteContent, ReportActions } from "@/components/admin/AdminActions";
+import { requireStaffPage, roleOf } from "@/lib/auth";
+import { rankAbove, type Role } from "@/lib/roles";
+import { findContent, isReportable, type ReportableType } from "@/lib/reports";
+import { Avatar } from "@/components/UserMenu";
+import { RoleBadge } from "@/components/admin/ModTools";
+import { ModActions, RemoveButton, ReportButtons, RequestButtons } from "@/components/admin/ModActions";
 
-export const metadata: Metadata = { title: "Moderation · Admin" };
+export const metadata: Metadata = { title: "Moderation" };
 
-function hrefFor(c: { anilistId: number; episode?: number | null }) {
-  return c.episode ? `/watch/${c.anilistId}/${c.episode}` : `/anime/${c.anilistId}`;
+type Props = { searchParams: Promise<{ tab?: string; show?: string }> };
+const PERSON = { select: { id: true, username: true, avatarColor: true, avatar: true, isAdmin: true, isModerator: true, mutedUntil: true, bannedAt: true } } as const;
+type Person = { id: string; username: string; avatarColor: string; avatar: string; isAdmin: boolean; isModerator: boolean; mutedUntil: Date | null; bannedAt: Date | null };
+
+const TYPE_LABEL: Record<ReportableType, string> = { comment: "Comment", review: "Review", post: "Post", post_comment: "Post reply" };
+const KIND_LABEL: Record<string, string> = { ban: "Ban", clearProfile: "Clear bio & banner", removeAvatar: "Remove picture" };
+
+function ago(d: Date) {
+  const s = (Date.now() - d.getTime()) / 1000;
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
 }
 
-export default async function ModerationPage() {
-  await requireAdminPage();
-  const [reports, recentComments, recentReviews] = await Promise.all([
-    prisma.report.findMany({ where: { status: "open" }, orderBy: { createdAt: "desc" }, take: 50, include: { reporter: { select: { username: true } } } }),
-    prisma.comment.findMany({ orderBy: { createdAt: "desc" }, take: 25, include: { user: { select: { username: true } } } }),
-    prisma.review.findMany({ orderBy: { createdAt: "desc" }, take: 10, include: { user: { select: { username: true } } } }),
+export default async function ModerationPage({ searchParams }: Props) {
+  const me = await requireStaffPage();
+  const myRole = me.role as Role;
+  const isAdmin = myRole === "admin" || myRole === "owner";
+  const sp = await searchParams;
+  const tab = ["requests", "activity", "restricted"].includes(sp.tab ?? "") ? sp.tab! : "reports";
+  const now = new Date();
+
+  const [openReports, openRequests, restrictedCount] = await Promise.all([
+    prisma.report.groupBy({ by: ["targetType", "targetId"], where: { status: "open" } }).then((g) => g.length),
+    prisma.modRequest.count({ where: { status: "open" } }),
+    prisma.user.count({ where: { OR: [{ mutedUntil: { gt: now } }, { bannedAt: { not: null } }] } }),
   ]);
-  const commentIds = reports.filter((r) => r.targetType === "comment").map((r) => r.targetId);
-  const reviewIds = reports.filter((r) => r.targetType === "review").map((r) => r.targetId);
-  const [cs, rs] = await Promise.all([
-    prisma.comment.findMany({ where: { id: { in: commentIds } }, include: { user: { select: { username: true } } } }),
-    prisma.review.findMany({ where: { id: { in: reviewIds } }, include: { user: { select: { username: true } } } }),
-  ]);
-  const content = new Map<string, { body: string; author: string; href: string }>([
-    ...cs.map((c) => [c.id, { body: c.body, author: c.user.username, href: `${hrefFor(c)}#comment-${c.id}` }] as const),
-    ...rs.map((r) => [r.id, { body: r.body, author: r.user.username, href: `/anime/${r.anilistId}` }] as const),
-  ]);
+
+  const tabs: [string, string, number][] = [
+    ["reports", "Reports", openReports],
+    ["requests", "Requests", openRequests],
+    ["activity", "Activity", 0],
+    ["restricted", "Muted & banned", restrictedCount],
+  ];
+
+  // Actions on a person show only if you rank above them.
+  const actionsFor = (p: Person) =>
+    rankAbove(myRole, roleOf(p)) ? <ModActions userId={p.id} username={p.username} muted={!!p.mutedUntil && p.mutedUntil > now} banned={!!p.bannedAt} isAdmin={isAdmin} hasAvatar={!!p.avatar} /> : null;
 
   return (
-    <div className="space-y-10">
-      <section>
-        <h2 className="mb-3 text-sm font-medium">
-          Open reports <span className="font-mono text-[11px] text-muted">{reports.length}</span>
-        </h2>
-        {reports.length === 0 ? (
-          <p className="panel rounded-xl p-6 text-center text-sm text-muted">Nothing to review. Nice.</p>
-        ) : (
-          <ul className="space-y-3">
-            {reports.map((r) => {
-              const c = content.get(r.targetId);
-              return (
-                <li key={r.id} className="panel rounded-xl p-4">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                    <span className="chip !py-0">{r.targetType}</span>
-                    <span>reported by {r.reporter.username}</span>
-                    <span className="font-mono">{r.createdAt.toLocaleString()}</span>
-                  </div>
-                  <p className="mt-2 text-sm">
-                    <span className="text-muted">Reason:</span> {r.reason || "—"}
-                  </p>
-                  {c ? (
-                    <div className="mt-2 rounded-lg bg-white/[0.03] p-3">
-                      <p className="whitespace-pre-wrap break-words text-sm text-fg/80">{c.body}</p>
-                      <p className="mt-1 text-xs text-muted">
-                        by {c.author} · <Link href={c.href} className="underline">view in context</Link>
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-sm text-muted">Content already deleted.</p>
-                  )}
-                  <div className="mt-3">
-                    <ReportActions reportId={r.id} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+    <div>
+      <p className="-mt-2 mb-6 max-w-2xl text-sm text-muted">
+        {isAdmin
+          ? "Review reports, handle moderator requests and keep an eye on new posts."
+          : "Remove anything that breaks the rules and mute people for up to a week. For bans or profile clean-ups, send a request to the admins."}
+      </p>
 
-      <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <div>
-          <h2 className="mb-3 text-sm font-medium">Latest comments</h2>
-          <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-xl border border-white/[0.06]">
-            {recentComments.map((c) => (
-              <li key={c.id} className="px-4 py-3">
-                <div className="flex items-center gap-2 text-xs text-muted">
-                  <span className="font-medium text-fg">{c.user.username}</span>
-                  <span className="font-mono">{c.createdAt.toLocaleString()}</span>
-                  <Link href={`${hrefFor(c)}#comment-${c.id}`} className="hover:text-fg">
-                    #{c.anilistId}
-                    {c.episode ? ` ep ${c.episode}` : ""}
-                  </Link>
-                  <span className="ml-auto">
-                    <DeleteContent kind="comment" id={c.id} />
-                  </span>
-                </div>
-                <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words text-sm text-fg/80">{c.body}</p>
-              </li>
-            ))}
-            {recentComments.length === 0 && <li className="p-6 text-center text-sm text-muted">No comments yet.</li>}
-          </ul>
-        </div>
-        <div>
-          <h2 className="mb-3 text-sm font-medium">Latest reviews</h2>
-          <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-xl border border-white/[0.06]">
-            {recentReviews.map((r) => (
-              <li key={r.id} className="px-4 py-3">
-                <div className="flex items-center gap-2 text-xs text-muted">
-                  <span className="font-medium text-fg">{r.user.username}</span>
-                  <span className="font-mono">{r.score}/10</span>
-                  <Link href={`/anime/${r.anilistId}`} className="hover:text-fg">
-                    #{r.anilistId}
-                  </Link>
-                  <span className="ml-auto">
-                    <DeleteContent kind="review" id={r.id} />
-                  </span>
-                </div>
-                {r.title && <p className="mt-1 text-sm font-medium">{r.title}</p>}
-                <p className="mt-0.5 line-clamp-3 break-words text-sm text-fg/80">{r.body}</p>
-              </li>
-            ))}
-            {recentReviews.length === 0 && <li className="p-6 text-center text-sm text-muted">No reviews yet.</li>}
-          </ul>
-        </div>
-      </section>
+      <nav aria-label="Moderation" className="scrollbar-none mb-6 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-white/[0.06]">
+        {tabs.map(([key, label, count]) => {
+          const active = tab === key;
+          return (
+            <Link
+              key={key}
+              href={key === "reports" ? "/admin/moderation" : `/admin/moderation?tab=${key}`}
+              aria-current={active ? "page" : undefined}
+              className={`relative flex shrink-0 items-center gap-1.5 px-3 pb-3 pt-1 text-sm transition-colors ${active ? "text-fg" : "text-muted hover:text-fg"}`}
+            >
+              {label}
+              {count > 0 && <span className={`rounded-full px-1.5 font-mono text-[10px] ${key === "reports" || (key === "requests" && isAdmin) ? "bg-accent text-bg" : "bg-white/[0.08] text-muted"}`}>{count}</span>}
+              {active && <span className="absolute inset-x-0 -bottom-px h-px bg-fg" />}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {tab === "reports" && <Reports actionsFor={actionsFor} />}
+      {tab === "requests" && <Requests isAdmin={isAdmin} myId={me.id} />}
+      {tab === "activity" && <Activity show={sp.show} actionsFor={actionsFor} />}
+      {tab === "restricted" && <Restricted actionsFor={actionsFor} />}
     </div>
+  );
+}
+
+function Empty({ icon: Icon, title, text }: { icon: typeof Flag; title: string; text: string }) {
+  return (
+    <div className="panel rounded-2xl px-6 py-14 text-center">
+      <Icon className="mx-auto h-6 w-6 text-muted" />
+      <p className="mt-3 text-sm font-medium">{title}</p>
+      <p className="mt-1 text-sm text-muted">{text}</p>
+    </div>
+  );
+}
+
+function Byline({ person, when, extra }: { person: Person; when: Date; extra?: React.ReactNode }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <Link href={`/u/${person.username}`} className="shrink-0">
+        <Avatar name={person.username} color={person.avatarColor} avatar={person.avatar} size={28} />
+      </Link>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-1.5 text-sm">
+          <Link href={`/u/${person.username}`} className="truncate font-medium hover:underline">
+            {person.username}
+          </Link>
+          <RoleBadge role={roleOf(person)} />
+          {person.bannedAt && <span className="text-[11px] text-red-300">banned</span>}
+          {!person.bannedAt && person.mutedUntil && person.mutedUntil > new Date() && <span className="text-[11px] text-amber-200">muted</span>}
+        </div>
+        <div className="font-mono text-[11px] text-muted">
+          {ago(when)}
+          {extra}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function Reports({ actionsFor }: { actionsFor: (p: Person) => React.ReactNode }) {
+  const reports = await prisma.report.findMany({ where: { status: "open" }, orderBy: { createdAt: "desc" }, take: 200, select: { id: true, targetType: true, targetId: true, reason: true, createdAt: true } });
+  // One card per reported thing, however many people reported it.
+  const groups = new Map<string, { type: ReportableType; id: string; reportId: string; reasons: Map<string, number>; latest: Date; count: number }>();
+  for (const r of reports) {
+    if (!isReportable(r.targetType)) continue;
+    const key = `${r.targetType}:${r.targetId}`;
+    const g = groups.get(key) ?? { type: r.targetType, id: r.targetId, reportId: r.id, reasons: new Map(), latest: r.createdAt, count: 0 };
+    g.reasons.set(r.reason, (g.reasons.get(r.reason) ?? 0) + 1);
+    g.count++;
+    groups.set(key, g);
+  }
+  const items = await Promise.all([...groups.values()].slice(0, 40).map(async (g) => ({ ...g, content: await findContent(g.type, g.id) })));
+  const authors = new Map((await prisma.user.findMany({ where: { id: { in: items.flatMap((i) => (i.content ? [i.content.userId] : [])) } }, ...PERSON })).map((u) => [u.id, u]));
+
+  if (!items.length) return <Empty icon={Flag} title="All clear" text="No open reports right now." />;
+
+  return (
+    <ul className="space-y-3">
+      {items.map((g) => {
+        const author = g.content ? authors.get(g.content.userId) : undefined;
+        return (
+          <li key={`${g.type}:${g.id}`} className="panel rounded-2xl p-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="chip !py-0">{TYPE_LABEL[g.type]}</span>
+              {[...g.reasons].map(([reason, n]) => (
+                <span key={reason} className="rounded-full bg-red-500/10 px-2 py-0.5 text-red-200">
+                  {reason}
+                  {n > 1 && ` ×${n}`}
+                </span>
+              ))}
+              <span className="ml-auto font-mono text-[11px] text-muted">
+                {g.count} report{g.count === 1 ? "" : "s"} · {ago(g.latest)}
+              </span>
+            </div>
+            {g.content && author ? (
+              <>
+                <blockquote className="mt-3 line-clamp-6 whitespace-pre-wrap break-words border-l-2 border-white/10 pl-3 text-sm text-fg/85">{g.content.body}</blockquote>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <Byline person={author} when={g.latest} extra={<> · <Link href={g.content.href} className="hover:text-fg">view in context</Link></>} />
+                  <div className="flex items-center gap-1">
+                    {actionsFor(author)}
+                    <ReportButtons reportId={g.reportId} />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <p className="text-sm text-muted">Already deleted.</p>
+                <ReportButtons reportId={g.reportId} />
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+async function Requests({ isAdmin, myId }: { isAdmin: boolean; myId: string }) {
+  const where = isAdmin ? {} : { requesterId: myId };
+  const [open, done] = await Promise.all([
+    prisma.modRequest.findMany({ where: { ...where, status: "open" }, orderBy: { createdAt: "desc" }, take: 50, include: { target: PERSON, requester: PERSON } }),
+    prisma.modRequest.findMany({ where: { ...where, status: { not: "open" } }, orderBy: { handledAt: "desc" }, take: 15, include: { target: PERSON, requester: PERSON } }),
+  ]);
+  if (!open.length && !done.length)
+    return <Empty icon={Inbox} title="No requests" text={isAdmin ? "When a moderator asks for a ban or a profile clean-up, it shows up here." : "Ask for a ban or a profile clean-up from the ⋯ menu next to someone's name."} />;
+
+  return (
+    <div className="space-y-8">
+      {open.length > 0 && (
+        <ul className="space-y-3">
+          {open.map((r) => (
+            <li key={r.id} className="panel rounded-2xl p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Byline person={r.target} when={r.createdAt} extra={<> · asked by {r.requester.username}</>} />
+                <span className={`rounded-full px-2.5 py-0.5 text-xs ${r.kind === "ban" ? "bg-red-500/15 text-red-200" : "bg-white/[0.06] text-fg/80"}`}>{KIND_LABEL[r.kind] ?? r.kind}</span>
+              </div>
+              {r.reason && <p className="mt-3 border-l-2 border-white/10 pl-3 text-sm text-fg/85">{r.reason}</p>}
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <Link href={`/u/${r.target.username}`} className="text-xs text-muted hover:text-fg">
+                  View profile
+                </Link>
+                {isAdmin ? <RequestButtons requestId={r.id} /> : <span className="text-xs text-muted">Waiting for an admin</span>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {done.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">Recently handled</h2>
+          <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.06]">
+            {done.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
+                <span className="font-medium">{r.target.username}</span>
+                <span className="text-muted">{KIND_LABEL[r.kind] ?? r.kind}</span>
+                <span className="text-xs text-muted">asked by {r.requester.username}</span>
+                <span className={`ml-auto text-xs ${r.status === "approved" ? "text-success" : "text-muted"}`}>{r.status === "approved" ? "Approved" : "Declined"}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+type ActivityItem = { key: string; kind: "post" | "comment" | "review" | "post_comment"; id: string; at: Date; person: Person; body: string; href: string; where: string };
+
+async function Activity({ show, actionsFor }: { show?: string; actionsFor: (p: Person) => React.ReactNode }) {
+  const filter = ["posts", "comments", "reviews"].includes(show ?? "") ? show : "all";
+  const take = filter === "all" ? 15 : 40;
+  const [posts, replies, comments, reviews] = await Promise.all([
+    filter === "all" || filter === "posts" ? prisma.post.findMany({ orderBy: { createdAt: "desc" }, take, include: { user: PERSON } }) : [],
+    filter === "all" || filter === "posts" ? prisma.postComment.findMany({ orderBy: { createdAt: "desc" }, take, include: { user: PERSON, post: { select: { user: { select: { username: true } } } } } }) : [],
+    filter === "all" || filter === "comments" ? prisma.comment.findMany({ orderBy: { createdAt: "desc" }, take, include: { user: PERSON } }) : [],
+    filter === "all" || filter === "reviews" ? prisma.review.findMany({ orderBy: { createdAt: "desc" }, take, include: { user: PERSON } }) : [],
+  ]);
+  const items: ActivityItem[] = [
+    ...posts.map((p) => ({ key: `p${p.id}`, kind: "post" as const, id: p.id, at: p.createdAt, person: p.user, body: p.body || (p.animeTitle ? `📺 ${p.animeTitle}` : ""), href: `/u/${p.user.username}?tab=posts#post-${p.id}`, where: "post" })),
+    ...replies.map((c) => ({ key: `r${c.id}`, kind: "post_comment" as const, id: c.id, at: c.createdAt, person: c.user, body: c.body, href: `/u/${c.post.user.username}?tab=posts#post-${c.postId}`, where: `reply on ${c.post.user.username}'s post` })),
+    ...comments.map((c) => ({ key: `c${c.id}`, kind: "comment" as const, id: c.id, at: c.createdAt, person: c.user, body: c.body, href: `${c.episode ? `/watch/${c.anilistId}/${c.episode}` : `/anime/${c.anilistId}`}#comment-${c.id}`, where: c.episode ? `episode ${c.episode} discussion` : "show discussion" })),
+    ...reviews.map((r) => ({ key: `v${r.id}`, kind: "review" as const, id: r.id, at: r.createdAt, person: r.user, body: [r.title, r.body].filter(Boolean).join(" — "), href: `/anime/${r.anilistId}#reviews`, where: `review · ${r.score}/10` })),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime());
+
+  const filters: [string, string][] = [
+    ["all", "Everything"],
+    ["posts", "Posts"],
+    ["comments", "Comments"],
+    ["reviews", "Reviews"],
+  ];
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        {filters.map(([key, label]) => (
+          <Link
+            key={key}
+            href={key === "all" ? "/admin/moderation?tab=activity" : `/admin/moderation?tab=activity&show=${key}`}
+            className={`rounded-full px-3 py-1 text-xs transition-colors ${filter === key ? "bg-white/[0.1] text-fg" : "text-muted hover:bg-white/[0.05] hover:text-fg"}`}
+          >
+            {label}
+          </Link>
+        ))}
+      </div>
+      {items.length === 0 ? (
+        <Empty icon={ShieldCheck} title="Nothing yet" text="New posts, comments and reviews show up here." />
+      ) : (
+        <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.06]">
+          {items.slice(0, 60).map((it) => (
+            <li key={it.key} className="group px-4 py-3 transition-colors hover:bg-white/[0.015]">
+              <div className="flex items-start justify-between gap-3">
+                <Byline person={it.person} when={it.at} extra={<> · <Link href={it.href} className="hover:text-fg">{it.where}</Link></>} />
+                <div className="flex shrink-0 items-center gap-0.5 opacity-70 transition-opacity group-hover:opacity-100">
+                  {actionsFor(it.person)}
+                  <RemoveButton kind={it.kind} id={it.id} />
+                </div>
+              </div>
+              {it.body && <p className="mt-2 line-clamp-3 whitespace-pre-wrap break-words pl-[38px] text-sm text-fg/80">{it.body}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+async function Restricted({ actionsFor }: { actionsFor: (p: Person) => React.ReactNode }) {
+  const now = new Date();
+  const people = await prisma.user.findMany({
+    where: { OR: [{ mutedUntil: { gt: now } }, { bannedAt: { not: null } }] },
+    orderBy: { username: "asc" },
+    take: 100,
+    select: { ...PERSON.select, muteReason: true, banReason: true, createdAt: true },
+  });
+  if (!people.length) return <Empty icon={VolumeX} title="Nobody is muted or banned" text="Mutes and bans show up here until they're lifted." />;
+  return (
+    <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.06]">
+      {people.map((p) => (
+        <li key={p.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+          <Byline person={p} when={p.createdAt} extra={<> joined</>} />
+          <div className="min-w-0 flex-1 text-xs">
+            {p.bannedAt ? (
+              <span className="flex items-center gap-1.5 text-red-300">
+                <Ban className="h-3.5 w-3.5 shrink-0" /> Banned {p.bannedAt.toLocaleDateString()}
+                {p.banReason && <span className="truncate text-muted">· {p.banReason}</span>}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-amber-200">
+                <VolumeX className="h-3.5 w-3.5 shrink-0" /> Muted until {p.mutedUntil!.toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                {p.muteReason && <span className="truncate text-muted">· {p.muteReason}</span>}
+              </span>
+            )}
+          </div>
+          {actionsFor(p)}
+        </li>
+      ))}
+    </ul>
   );
 }

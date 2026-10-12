@@ -18,6 +18,11 @@ model User {
 
   bio             String    @default("")
   isAdmin         Boolean   @default(false)
+  /// Moderators can review reports, remove content, mute and ban regular users. No admin pages.
+  isModerator     Boolean   @default(false)
+  /// Muted: can still log in and watch, but can't post, comment or review until this time.
+  mutedUntil      DateTime?
+  muteReason      String    @default("")
   profilePublic   Boolean   @default(false)
   /// "everyone" | "followers" | "private". profilePublic mirrors visibility == "everyone".
   profileVisibility String  @default("private")
@@ -46,6 +51,8 @@ model User {
   posts            Post[]
   postLikes        PostLike[]
   postComments     PostComment[]
+  modRequestsMade  ModRequest[]       @relation("ModRequestBy")
+  modRequestsAbout ModRequest[]       @relation("ModRequestTarget")
   playbackSettings PlaybackSettings?
   sessions         Session[]
   listEntries      ListEntry[]
@@ -522,4 +529,31 @@ model PostComment {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([postId, createdAt])
+}
+
+/// A moderator asking an admin to take a bigger action (ban, clear bio/banner, remove picture).
+model ModRequest {
+  id          String    @id @default(cuid())
+  kind        String // ban | clearProfile | removeAvatar
+  targetId    String
+  target      User      @relation("ModRequestTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  requesterId String
+  requester   User      @relation("ModRequestBy", fields: [requesterId], references: [id], onDelete: Cascade)
+  reason      String    @default("")
+  status      String    @default("open") // open | approved | denied
+  handledById String?
+  handledAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([status, createdAt])
+}
+
+/// AniList responses kept across restarts (see lib/cache.ts). Served instantly, refreshed in the background.
+model CacheEntry {
+  key       String   @id
+  value     String
+  expires   DateTime
+  updatedAt DateTime @updatedAt
+
+  @@index([expires])
 }

@@ -187,7 +187,8 @@ function PlayerHost({
       style={outerStyle}
       data-mode={mode}
       className={[
-        "z-[45]",
+        // Inline it scrolls with the page, so it stays under the sticky navbar (z-40); detached it sits on top.
+        mode === "inline" ? "z-30" : "z-[45]",
         mode === "inline" ? "" : "[&_.aspect-video]:!rounded-none",
         compact ? "overflow-hidden rounded-xl bg-panel shadow-xl shadow-black/50 ring-1 ring-white/10" : "",
         compact && phone ? "flex items-center gap-3 pr-1.5" : "",
@@ -196,7 +197,8 @@ function PlayerHost({
         win.active ? "select-none [&_iframe]:pointer-events-none" : "",
       ].join(" ")}
     >
-      <div className="relative shrink-0 overflow-hidden" style={{ width: videoWidth, height: clipHeight }}>
+      {/* Only clip when showing the video alone (mini, float, pinned); inline, the control bar's menus must be able to open past it. */}
+      <div className={`relative shrink-0 ${clipHeight ? "overflow-hidden" : ""}`} style={{ width: videoWidth, height: clipHeight }}>
         <WatchClient {...session.props} />
         {/* On a phone the mini player is too small to use the embed's own controls: tap to go back. */}
         {compact && phone && <button onClick={open} className="absolute inset-0" aria-label={`Open ${session.title}`} />}

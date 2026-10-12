@@ -6,6 +6,7 @@ import { useState } from "react";
 import { CheckCircle2, LoaderCircle } from "lucide-react";
 import { LogoMark } from "../Logo";
 import RecoveryKey from "./RecoveryKey";
+import Turnstile from "./Turnstile";
 
 function Shell({ title, sub, children }: { title: string; sub: string; children: React.ReactNode }) {
   return (
@@ -18,13 +19,15 @@ function Shell({ title, sub, children }: { title: string; sub: string; children:
   );
 }
 
-export function ForgotForm() {
+export function ForgotForm({ captchaKey }: { captchaKey: string | null }) {
   const router = useRouter();
   const [form, setForm] = useState({ username: "", recoveryKey: "", password: "", confirm: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [newKey, setNewKey] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaNonce, setCaptchaNonce] = useState(0);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
 
   if (finished)
@@ -54,9 +57,10 @@ export function ForgotForm() {
           if (form.password !== form.confirm) return setError("Passwords don't match");
           setBusy(true);
           setError("");
-          const res = await fetch("/api/auth/forgot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+          const res = await fetch("/api/auth/forgot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, captcha }) });
           const json = await res.json().catch(() => ({}));
           setBusy(false);
+          if (captchaKey) setCaptchaNonce((n) => n + 1);
           if (res.ok) setNewKey(json.recoveryKey);
           else setError(json.error ?? "Something went wrong");
         }}
@@ -75,8 +79,9 @@ export function ForgotForm() {
         />
         <input type="password" required minLength={8} value={form.password} onChange={set("password")} placeholder="New password (8+ characters)" className="input text-sm" aria-label="New password" autoComplete="new-password" />
         <input type="password" required value={form.confirm} onChange={set("confirm")} placeholder="Confirm new password" className="input text-sm" aria-label="Confirm password" autoComplete="new-password" />
+        {captchaKey && <Turnstile siteKey={captchaKey} onToken={setCaptcha} nonce={captchaNonce} />}
         {error && <p className="text-sm text-red-300">{error}</p>}
-        <button disabled={busy} className="btn btn-primary w-full">
+        <button disabled={busy || (!!captchaKey && !captcha)} className="btn btn-primary w-full">
           {busy && <LoaderCircle className="spin h-4 w-4" />} Reset password
         </button>
       </form>

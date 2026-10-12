@@ -4,6 +4,8 @@ import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "./db";
 import { clientIp } from "./rate-limit";
+import { rankAbove, type Role } from "./roles";
+import { automodReason } from "./automod";
 
 const COOKIE = "aw_session";
 const MAX_AGE = 60 * 60 * 24 * 30;
@@ -116,7 +118,7 @@ export async function getUser() {
   if (!id) return null;
   return prisma.user.findUnique({
     where: { id },
-    select: { id: true, username: true, avatarColor: true, avatar: true, createdAt: true, isAdmin: true },
+    select: { id: true, username: true, avatarColor: true, avatar: true, createdAt: true, isAdmin: true, isModerator: true },
   });
 }
 
@@ -150,6 +152,46 @@ export function isAdminUser(user: { isAdmin: boolean; username: string } | null 
   return user.isAdmin || envAdminNames().includes(user.username.toLowerCase());
 }
 
+/**
+ * Staff roles, highest first. Owners are the accounts named in ADMIN_USERNAMES: always admins,
+ * and nobody else can demote, ban, sign out, reset or delete them. Admins run the site;
+ * moderators can only moderate (reports, removing content, muting and banning regular users).
+ */
+export type { Role } from "./roles";
+
+export function isOwnerName(username: string) {
+  return envAdminNames().includes(username.toLowerCase());
+}
+
+export function roleOf(user: { username: string; isAdmin: boolean; isModerator?: boolean } | null | undefined): Role {
+  if (!user) return "user";
+  if (isOwnerName(user.username)) return "owner";
+  if (user.isAdmin) return "admin";
+  return user.isModerator ? "moderator" : "user";
+}
+
+/** Can `actor` take action against `target`? Only against people below them. */
+export function outranks(actor: Parameters<typeof roleOf>[0], target: Parameters<typeof roleOf>[0]) {
+  return rankAbove(roleOf(actor), roleOf(target));
+}
+
+export const isStaffRole = (role: Role) => role !== "user";
+
+/** The signed-in moderator, admin or owner (with their role), or null. */
+export async function requireStaff() {
+  const user = await getUser();
+  const role = roleOf(user);
+  if (!user || !isStaffRole(role)) return null;
+  if (role === "owner" && !user.isAdmin) await prisma.user.update({ where: { id: user.id }, data: { isAdmin: true } });
+  return { ...user, role };
+}
+
+export async function requireStaffPage() {
+  const staff = await requireStaff();
+  if (!staff) notFound();
+  return staff;
+}
+
 const RESERVED = new Set(["admin", "administrator", "anikumo", "support", "moderator", "mod", "staff", "system", "official", "root"]);
 
 /**
@@ -161,6 +203,7 @@ export async function checkUsername(username: string, opts: { exceptUserId?: str
   if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) return "Username must be 3–20 letters, numbers or _";
   const lower = username.toLowerCase();
   if (RESERVED.has(lower)) return "That username is reserved";
+  if (automodReason(username.replace(/_/g, " ")) || automodReason(username)) return "That username isn't allowed";
   if (envAdminNames().includes(lower) && (opts.rename || (await prisma.user.count({ where: { isAdmin: true } })) > 0)) return "That username is reserved";
   const clash = await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM "User" WHERE lower(username) = ${lower} LIMIT 1`;
   if (clash.length && clash[0].id !== opts.exceptUserId) return "That username is taken";

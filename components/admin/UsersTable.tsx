@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Ban, ChevronDown, LoaderCircle, Search, ShieldCheck } from "lucide-react";
+import { Ban, ChevronDown, Crown, LoaderCircle, Search, VolumeX } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Avatar } from "../UserMenu";
 import ConfirmButton from "../account/ConfirmButton";
+import { rankAbove, type Role } from "@/lib/roles";
+import { RoleBadge } from "./ModTools";
+import { ModActions } from "./ModActions";
 
 type Row = {
   id: string;
@@ -14,6 +17,11 @@ type Row = {
   avatarColor: string; avatar: string;
   createdAt: string;
   isAdmin: boolean;
+  isModerator: boolean;
+  role: Role;
+  muted: boolean;
+  mutedUntil: string | null;
+  muteReason: string;
   bannedAt: string | null;
   banReason: string;
   totpEnabled: boolean;
@@ -24,7 +32,8 @@ type Row = {
 
 const FILTERS = [
   { id: "all", label: "All" },
-  { id: "admins", label: "Admins" },
+  { id: "staff", label: "Staff" },
+  { id: "muted", label: "Muted" },
   { id: "banned", label: "Banned" },
 ] as const;
 
@@ -44,7 +53,7 @@ function ago(iso: string | null) {
   return `${Math.round(s / 86400)}d ago`;
 }
 
-export default function UsersTable({ meId }: { meId: string }) {
+export default function UsersTable({ meId, myRole }: { meId: string; myRole: Role }) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [page, setPage] = useState(0);
@@ -96,7 +105,8 @@ export default function UsersTable({ meId }: { meId: string }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2 text-sm">
                       <span className="truncate font-medium">{u.username}</span>
-                      {u.isAdmin && <span className="chip !py-0 !text-[10px]"><ShieldCheck className="h-3 w-3" /> admin</span>}
+                      <RoleBadge role={u.role} />
+                      {u.muted && <span className="chip !py-0 !text-[10px] text-amber-200"><VolumeX className="h-3 w-3" /> muted</span>}
                       {u.bannedAt && <span className="chip !border-red-400/30 !py-0 !text-[10px] text-red-300"><Ban className="h-3 w-3" /> banned</span>}
                       {u.id === meId && <span className="text-xs text-muted">(you)</span>}
                     </div>
@@ -114,7 +124,7 @@ export default function UsersTable({ meId }: { meId: string }) {
                 <AnimatePresence initial={false}>
                   {open === u.id && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                      <UserActions user={u} self={u.id === meId} onChange={load} />
+                      <UserActions user={u} self={u.id === meId} myRole={myRole} onChange={load} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -141,10 +151,11 @@ export default function UsersTable({ meId }: { meId: string }) {
   );
 }
 
-function UserActions({ user, self, onChange }: { user: Row; self: boolean; onChange: () => void }) {
+function UserActions({ user, self, myRole, onChange }: { user: Row; self: boolean; myRole: Role; onChange: () => void }) {
   const [password, setPassword] = useState("");
-  const [reason, setReason] = useState("");
   const [confirm, setConfirm] = useState("");
+  // You can only act on people ranked below you: owner > admin > moderator > member.
+  const canAct = !self && rankAbove(myRole, user.role);
   const run = async (body: object, msg: string) => {
     if (await act({ userId: user.id, ...body })) {
       toast(msg);
@@ -157,65 +168,80 @@ function UserActions({ user, self, onChange }: { user: Row; self: boolean; onCha
   return (
     <div className="grid gap-4 border-t border-white/[0.04] bg-white/[0.015] px-4 py-4 text-sm md:grid-cols-2">
       <div className="space-y-3">
+        {user.role === "owner" && !self && (
+          <p className="flex items-center gap-1.5 text-xs text-amber-200/90">
+            <Crown className="h-3.5 w-3.5" /> Site owner — can&apos;t be changed by anyone else.
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
           {user.profilePublic && (
             <Link href={`/u/${user.username}`} className="btn btn-ghost !py-1.5 !text-xs">
               View profile
             </Link>
           )}
-          {user.avatar && (
+          {user.avatar && (canAct || self) && (
             <button onClick={() => run({ action: "removeAvatar" }, "Picture removed")} className="btn btn-ghost !py-1.5 !text-xs">
               Remove picture
             </button>
           )}
-          <button onClick={() => run({ action: "signOut" }, `Signed ${user.username} out everywhere`)} className="btn btn-ghost !py-1.5 !text-xs">
-            Sign out everywhere
-          </button>
-          {!self && (
+          {(canAct || self) && (
+            <button onClick={() => run({ action: "signOut" }, `Signed ${user.username} out everywhere`)} className="btn btn-ghost !py-1.5 !text-xs">
+              Sign out everywhere
+            </button>
+          )}
+          {canAct && (user.role === "user" || user.role === "moderator") && !user.bannedAt && (
+            <button onClick={() => run({ action: "setModerator", value: !user.isModerator }, user.isModerator ? "Moderator removed" : `${user.username} is now a moderator`)} className="btn btn-ghost !py-1.5 !text-xs">
+              {user.isModerator ? "Remove moderator" : "Make moderator"}
+            </button>
+          )}
+          {canAct && myRole === "owner" && !user.bannedAt && (
             <button onClick={() => run({ action: "setAdmin", value: !user.isAdmin }, user.isAdmin ? "Admin removed" : `${user.username} is now an admin`)} className="btn btn-ghost !py-1.5 !text-xs">
               {user.isAdmin ? "Remove admin" : "Make admin"}
             </button>
           )}
         </div>
-        <form onSubmit={async (e) => (e.preventDefault(), (await run({ action: "resetPassword", password }, "Password reset")) && setPassword(""))} className="flex gap-2">
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New password" minLength={8} className="input !py-1.5 text-xs" aria-label="New password" autoComplete="new-password" />
-          <button disabled={password.length < 8} className="btn btn-ghost !py-1.5 !text-xs">
-            Reset password
-          </button>
-        </form>
+        {canAct && (
+          <form onSubmit={async (e) => (e.preventDefault(), (await run({ action: "resetPassword", password }, "Password reset")) && setPassword(""))} className="flex gap-2">
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New password" minLength={8} className="input !py-1.5 text-xs" aria-label="New password" autoComplete="new-password" />
+            <button disabled={password.length < 8} className="btn btn-ghost !py-1.5 !text-xs">
+              Reset password
+            </button>
+          </form>
+        )}
         <div className="font-mono text-[11px] text-muted">
           2FA {user.totpEnabled ? "on" : "off"} · profile {user.profilePublic ? "public" : "private"}
         </div>
       </div>
 
-      {!self && !user.isAdmin && (
+      {canAct && (
         <div className="space-y-3">
-          {user.bannedAt ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-xs text-red-300">
-                Banned {new Date(user.bannedAt).toLocaleDateString()}
-                {user.banReason && `: ${user.banReason}`}
-              </span>
-              <button onClick={() => run({ action: "unban" }, `${user.username} unbanned`)} className="btn btn-ghost !py-1.5 !text-xs">
-                Unban
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={(e) => (e.preventDefault(), run({ action: "ban", reason }, `${user.username} banned`))} className="flex gap-2">
-              <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ban reason (shown to them)" maxLength={300} className="input !py-1.5 text-xs" aria-label="Ban reason" />
-              <button className="btn !py-1.5 !text-xs bg-red-500/15 text-red-300 hover:bg-red-500/25">Ban</button>
-            </form>
+          {user.bannedAt && (
+            <p className="text-xs text-red-300">
+              <Ban className="mr-1 inline h-3 w-3" />
+              Banned {new Date(user.bannedAt).toLocaleDateString()}
+              {user.banReason && `: ${user.banReason}`}
+            </p>
           )}
-          <div className="flex gap-2">
-            <input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={`Type ${user.username} to delete`} className="input !py-1.5 text-xs" aria-label="Confirm username to delete" />
-            {confirm === user.username ? (
-              <ConfirmButton onConfirm={() => run({ action: "deleteUser", confirm }, "User deleted")} label="Delete" confirmLabel="Really delete?" className="btn !py-1.5 !text-xs bg-red-500/90 text-[#fff] hover:bg-red-500" />
-            ) : (
-              <button disabled className="btn btn-ghost !py-1.5 !text-xs">
-                Delete
-              </button>
-            )}
-          </div>
+          {user.muted && user.mutedUntil && (
+            <p className="text-xs text-amber-200">
+              <VolumeX className="mr-1 inline h-3 w-3" />
+              Muted until {new Date(user.mutedUntil).toLocaleString()}
+              {user.muteReason && `: ${user.muteReason}`}
+            </p>
+          )}
+          <ModActions userId={user.id} username={user.username} muted={user.muted} banned={!!user.bannedAt} isAdmin hasAvatar={!!user.avatar} onDone={onChange} />
+          {!user.isAdmin && (
+            <div className="flex gap-2">
+              <input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={`Type ${user.username} to delete`} className="input !py-1.5 text-xs" aria-label="Confirm username to delete" />
+              {confirm === user.username ? (
+                <ConfirmButton onConfirm={() => run({ action: "deleteUser", confirm }, "User deleted")} label="Delete" confirmLabel="Really delete?" className="btn !py-1.5 !text-xs bg-red-500/90 text-[#fff] hover:bg-red-500" />
+              ) : (
+                <button disabled className="btn btn-ghost !py-1.5 !text-xs">
+                  Delete
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

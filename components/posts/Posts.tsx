@@ -9,6 +9,7 @@ import type { PostView } from "@/lib/posts";
 import { Avatar } from "../UserMenu";
 import SpoilerText from "../SpoilerText";
 import { usePrefs } from "../PrefsProvider";
+import ReportButton from "../ReportButton";
 
 const POST_MAX = 500;
 const COMMENT_MAX = 300;
@@ -37,6 +38,7 @@ export default function PostFeed({ source, canPost, empty }: { source: Source; c
   const [posts, setPosts] = useState<PostView[] | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [staff, setStaff] = useState(false);
   const qs = "username" in source ? `username=${encodeURIComponent(source.username)}` : `feed=${source.feed}`;
 
   const load = useCallback(
@@ -46,6 +48,7 @@ export default function PostFeed({ source, canPost, empty }: { source: Source; c
       const json = res.ok ? await res.json() : { posts: [], next: null };
       setPosts((p) => (before && p ? [...p, ...json.posts] : json.posts));
       setNext(json.next);
+      setStaff(json.staff === true);
       setLoading(false);
     },
     [qs],
@@ -67,7 +70,7 @@ export default function PostFeed({ source, canPost, empty }: { source: Source; c
         <AnimatePresence initial={false}>
           {posts.map((p) => (
             <motion.div key={p.id} layout="position" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}>
-              <PostCard post={p} onDeleted={() => setPosts((ps) => ps?.filter((x) => x.id !== p.id) ?? null)} />
+              <PostCard post={p} staff={staff} onDeleted={() => setPosts((ps) => ps?.filter((x) => x.id !== p.id) ?? null)} />
             </motion.div>
           ))}
         </AnimatePresence>
@@ -206,7 +209,7 @@ function AnimeSearch({ onPick }: { onPick: (a: Anime) => void }) {
   );
 }
 
-export function PostCard({ post: initial, onDeleted }: { post: PostView; onDeleted: () => void }) {
+export function PostCard({ post: initial, staff = false, onDeleted }: { post: PostView; staff?: boolean; onDeleted: () => void }) {
   const { loggedIn } = usePrefs();
   const [post, setPost] = useState(initial);
   const [open, setOpen] = useState(false);
@@ -229,7 +232,7 @@ export function PostCard({ post: initial, onDeleted }: { post: PostView; onDelet
   }
 
   async function remove() {
-    if (!confirm("Delete this post?")) return;
+    if (!confirm(post.mine ? "Delete this post?" : `Remove this post by ${post.author.username}?`)) return;
     if (await postAction({ action: "delete", id: post.id })) onDeleted();
   }
 
@@ -248,8 +251,14 @@ export function PostCard({ post: initial, onDeleted }: { post: PostView; onDelet
             {post.anime?.recommend && " · recommends"}
           </div>
         </div>
-        {post.mine && (
-          <button onClick={remove} className="rounded-lg p-1.5 text-muted opacity-0 transition hover:bg-white/[0.06] hover:text-fg group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100" aria-label="Delete post">
+        {!post.mine && loggedIn && <ReportButton targetType="post" targetId={post.id} className="opacity-0 transition group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100" />}
+        {(post.mine || staff) && (
+          <button
+            onClick={remove}
+            className={`rounded-lg p-1.5 opacity-0 transition hover:bg-white/[0.06] group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100 ${post.mine ? "text-muted hover:text-fg" : "text-red-300/80 hover:text-red-300"}`}
+            aria-label={post.mine ? "Delete post" : "Remove post (moderator)"}
+            title={post.mine ? "Delete" : "Remove (moderator)"}
+          >
             <Trash2 className="h-4 w-4" />
           </button>
         )}
@@ -343,8 +352,9 @@ function Thread({ postId, loggedIn, onCount }: { postId: string; loggedIn: boole
                   <span className="font-mono text-[10px] text-muted" suppressHydrationWarning>
                     {ago(c.createdAt)}
                   </span>
+                  {!c.mine && loggedIn && <ReportButton targetType="post_comment" targetId={c.id} className="ml-auto" />}
                   {c.canDelete && (
-                    <button onClick={() => remove(c.id)} className="ml-auto text-muted opacity-0 transition hover:text-fg group-hover/c:opacity-100 [@media(hover:none)]:opacity-100" aria-label="Delete comment">
+                    <button onClick={() => remove(c.id)} className={`${!c.mine && loggedIn ? "" : "ml-auto"} text-muted opacity-0 transition hover:text-fg group-hover/c:opacity-100 [@media(hover:none)]:opacity-100`} aria-label="Delete comment">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   )}

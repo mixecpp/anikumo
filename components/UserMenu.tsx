@@ -40,7 +40,7 @@ const ACCOUNT_LINKS: { href: string; label: MessageKey; icon: typeof LayoutGrid 
   { href: "/account/settings", label: "menu.settings", icon: Settings },
 ];
 
-type U = { username: string; avatarColor: string; avatar: string; isAdmin: boolean; profilePublic: boolean };
+type U = { username: string; avatarColor: string; avatar: string; isAdmin: boolean; isModerator?: boolean; profilePublic: boolean };
 
 export default function UserMenu({ user, latestChangelog }: { user: U | null; latestChangelog: string | null }) {
   const router = useRouter();
@@ -108,11 +108,15 @@ export default function UserMenu({ user, latestChangelog }: { user: U | null; la
                       <Globe className="h-4 w-4 text-muted" /> {t("menu.profile")}
                     </Link>
                   )}
-                  {user.isAdmin && (
+                  {user.isAdmin ? (
                     <Link href="/admin" onClick={() => setOpen(false)} className={item}>
                       <Shield className="h-4 w-4 text-muted" /> {t("menu.admin")}
                     </Link>
-                  )}
+                  ) : user.isModerator ? (
+                    <Link href="/admin/moderation" onClick={() => setOpen(false)} className={item}>
+                      <Shield className="h-4 w-4 text-muted" /> Moderation
+                    </Link>
+                  ) : null}
                 </div>
                 <div className="pt-1">
                   <WhatsNewItem unseen={unseen} className={item} onClick={() => setOpen(false)} />

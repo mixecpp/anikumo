@@ -17,7 +17,9 @@ function formatDuration(seconds: number) {
 
 function CountUp({ to, format }: { to: number; format?: "duration" }) {
   const reduce = useReducedMotion();
-  const [n, setN] = useState(reduce ? to : 0);
+  // Always start at 0 so the server HTML and first browser render match (the reduced-motion
+  // preference is only known in the browser); the effect then jumps or animates to the value.
+  const [n, setN] = useState(0);
   useEffect(() => {
     if (reduce) return setN(to);
     const controls = animate(0, to, { duration: 0.9, ease: [0.16, 1, 0.3, 1], onUpdate: (v) => setN(v) });

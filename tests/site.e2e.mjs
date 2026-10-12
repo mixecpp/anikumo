@@ -9,12 +9,16 @@ import sharp from "sharp";
 const BASE = process.env.BASE_URL ?? "http://localhost:8080";
 
 // A per-run client IP so the per-IP signup limit doesn't trip when the suite is re-run (dev server, no proxy).
+// Cloudflare Turnstile test keys (dev) accept this dummy token.
+const CAPTCHA = "XXXX.DUMMY.TOKEN.XXXX";
+const withCaptcha = (path, body) => (body && path.startsWith("/api/auth/") ? { captcha: CAPTCHA, ...body } : body);
+
 const RUN_IP = `10.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
 
 function client() {
   let cookie = "";
   return async (method, path, body) => {
-    const res = await fetch(BASE + path, { method, redirect: "manual", headers: { "Content-Type": "application/json", "X-Forwarded-For": RUN_IP, ...(cookie ? { Cookie: cookie } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    const res = await fetch(BASE + path, { method, redirect: "manual", headers: { "Content-Type": "application/json", "X-Forwarded-For": RUN_IP, ...(cookie ? { Cookie: cookie } : {}) }, body: body ? JSON.stringify(withCaptcha(path, body)) : undefined });
     const m = res.headers.get("set-cookie")?.match(/aw_session=([^;]*)/);
     if (m) cookie = `aw_session=${m[1]}`;
     const text = await res.text();
@@ -40,6 +44,10 @@ test("accounts, lists, social and pages", async (t) => {
       assert.match(r.json.recoveryKey, /^[A-Z0-9]{5}(-[A-Z0-9]{5}){5}$/);
       A.recoveryKey = r.json.recoveryKey;
       assert.equal((await b("POST", "/api/auth/register", B)).status, 200);
+      // Brand-new accounts post slowly (lib/spam.ts); these tests post back-to-back, so age them.
+      const prisma = new PrismaClient();
+      await prisma.user.updateMany({ where: { username: { in: [A.username, B.username] } }, data: { createdAt: new Date(Date.now() - 5 * 86_400_000) } });
+      await prisma.$disconnect();
     });
 
     await t.test("login rejects bad password and accepts good one", async () => {
@@ -66,7 +74,7 @@ test("accounts, lists, social and pages", async (t) => {
       assert.equal((await c("POST", "/api/auth/register", { username: "admin", password: "whatever-123" })).status, 400);
       assert.equal((await c("POST", "/api/auth/register", { username: A.username.toUpperCase(), password: "whatever-123" })).status, 409);
       assert.equal((await a("PATCH", "/api/account", { username: B.username.toUpperCase() })).status, 409);
-      const cross = await fetch(BASE + "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json", Origin: "https://evil.example" }, body: JSON.stringify({ username: A.username, password: A.password }) });
+      const cross = await fetch(BASE + "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json", Origin: "https://evil.example" }, body: JSON.stringify({ captcha: CAPTCHA, username: A.username, password: A.password }) });
       assert.equal(cross.status, 403);
       const page = await fetch(BASE + "/");
       assert.equal(page.headers.get("x-content-type-options"), "nosniff");
@@ -149,7 +157,7 @@ test("accounts, lists, social and pages", async (t) => {
         return { status: res.status, json: await res.json() };
       };
       // grab A's session cookie from a fresh login
-      const login = await fetch(BASE + "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json", "X-Forwarded-For": RUN_IP }, body: JSON.stringify({ username: A.username, password: A.password }) });
+      const login = await fetch(BASE + "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json", "X-Forwarded-For": RUN_IP }, body: JSON.stringify({ captcha: CAPTCHA, username: A.username, password: A.password }) });
       A.cookie = login.headers.get("set-cookie").match(/aw_session=[^;]*/)[0];
 
       const png = await sharp({ create: { width: 400, height: 300, channels: 3, background: "#f6a57c" } }).png().toBuffer();

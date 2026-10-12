@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, Eye, EyeOff, KeyRound, LoaderCircle, ShieldCheck } from "lucide-react";
 import { LogoMark } from "./Logo";
 import RecoveryKey from "./auth/RecoveryKey";
+import Turnstile from "./auth/Turnstile";
 
 async function postJson(url: string, body: unknown) {
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -19,7 +20,7 @@ async function postJson(url: string, body: unknown) {
   return { ok: res.ok, json };
 }
 
-export default function AuthForm({ mode, covers }: { mode: "login" | "register"; covers: string[] }) {
+export default function AuthForm({ mode, covers, captchaKey }: { mode: "login" | "register"; covers: string[]; captchaKey: string | null }) {
   const router = useRouter();
   const next = useSearchParams().get("next");
   const [error, setError] = useState("");
@@ -28,6 +29,8 @@ export default function AuthForm({ mode, covers }: { mode: "login" | "register";
   const [ticket, setTicket] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [recovery, setRecovery] = useState<{ key: string; username: string } | null>(null);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaNonce, setCaptchaNonce] = useState(0);
 
   const done = () => {
     router.push(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
@@ -40,8 +43,10 @@ export default function AuthForm({ mode, covers }: { mode: "login" | "register";
     if (mode === "register" && data.password !== data.confirm) return setError("Passwords don't match");
     setBusy(true);
     setError("");
-    const { ok, json } = await postJson(`/api/auth/${mode}`, data);
+    const { ok, json } = await postJson(`/api/auth/${mode}`, { ...data, captcha });
     setBusy(false);
+    // Captcha tokens are single-use: get a fresh one for the next try.
+    if (captchaKey) setCaptchaNonce((n) => n + 1);
     if (!ok) return setError(String(json.error ?? "Something went wrong"));
     if (json.twoFactor && typeof json.ticket === "string") return setTicket(json.ticket);
     if (typeof json.recoveryKey === "string") return setRecovery({ key: json.recoveryKey, username: String(data.username) });
@@ -163,10 +168,11 @@ export default function AuthForm({ mode, covers }: { mode: "login" | "register";
                 </label>
                 {mode === "register" && <Field label="Confirm password" name="confirm" type={show ? "text" : "password"} autoComplete="new-password" minLength={8} />}
 
+                {captchaKey && <Turnstile siteKey={captchaKey} onToken={setCaptcha} nonce={captchaNonce} />}
                 {error && <ErrorBox text={error} />}
-                <button disabled={busy} className="btn btn-primary w-full !py-2.5">
+                <button disabled={busy || (!!captchaKey && !captcha)} className="btn btn-primary w-full !py-2.5">
                   {busy && <LoaderCircle className="spin h-4 w-4" />}
-                  {mode === "login" ? "Log in" : "Create account"}
+                  {captchaKey && !captcha && !busy ? "Checking your browser…" : mode === "login" ? "Log in" : "Create account"}
                 </button>
               </form>
 

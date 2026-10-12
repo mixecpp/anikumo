@@ -2,24 +2,22 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { fail, readJson, requireUserId } from "@/lib/http";
 import { rateLimit } from "@/lib/rate-limit";
+import { findContent, isReportable } from "@/lib/reports";
 
 const REASONS = ["spoiler", "harassment", "spam", "offensive", "other"];
 
-/** POST { targetType: "comment" | "review", targetId, reason } */
+/** POST { targetType: "comment" | "review" | "post" | "post_comment", targetId, reason } */
 export async function POST(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Log in to report", 401);
   if (!rateLimit(`report:${userId}`, 20, 60 * 60_000).ok) return fail("You've sent a lot of reports. Try again later.", 429);
   const b = await readJson<{ targetType: string; targetId: string; reason: string }>(req);
-  const targetType = b.targetType === "review" ? "review" : b.targetType === "comment" ? "comment" : null;
   const reason = REASONS.includes(String(b.reason)) ? String(b.reason) : null;
   const targetId = String(b.targetId ?? "");
-  if (!targetType || !reason || !targetId) return fail("Choose a reason");
+  if (!isReportable(b.targetType) || !reason || !targetId) return fail("Choose a reason");
+  const targetType = b.targetType;
 
-  const exists =
-    targetType === "comment"
-      ? await prisma.comment.findUnique({ where: { id: targetId }, select: { userId: true } })
-      : await prisma.review.findUnique({ where: { id: targetId }, select: { userId: true } });
+  const exists = await findContent(targetType, targetId);
   if (!exists) return fail("That content no longer exists", 404);
   if (exists.userId === userId) return fail("You can't report your own post");
 

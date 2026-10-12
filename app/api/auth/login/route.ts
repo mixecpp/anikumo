@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { createSession, signTwoFactorTicket } from "@/lib/auth";
 import { fail, readJson } from "@/lib/http";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { verifyCaptcha } from "@/lib/captcha";
 
 // A real bcrypt hash (of a random string) so unknown usernames cost the same time as wrong passwords.
 const DUMMY_HASH = "$2b$12$1P7GuOpT1wMx3NckwbYIFehsAM93n9Kh2VuBvaUkxA1blrx6G14wq";
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
     const wait = Math.max(ipLimit.retryAfter, acctLimit.retryAfter);
     return fail(`Too many attempts. Try again in ${Math.ceil(wait / 60)} min.`, 429);
   }
+  if (!(await verifyCaptcha((body as { captcha?: unknown }).captcha, clientIp(req.headers)))) return fail("The human check didn't pass — try again", 400);
 
   const user = await prisma.user.findUnique({ where: { username: login } });
   const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);

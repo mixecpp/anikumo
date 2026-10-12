@@ -34,10 +34,10 @@ const ids = [];
 async function makeUser(tag) {
   const username = `pf${tag}_${stamp}`;
   const password = randomUUID();
-  const u = await prisma.user.create({ data: { username, passwordHash: await bcrypt.hash(password, 4) } });
+  const u = await prisma.user.create({ data: { username, passwordHash: await bcrypt.hash(password, 4), createdAt: new Date(Date.now() - 5 * 86_400_000) } });
   ids.push(u.id);
   const c = client();
-  assert.equal((await c("POST", "/api/auth/login", { username, password })).status, 200);
+  assert.equal((await c("POST", "/api/auth/login", { username, password, captcha: "XXXX.DUMMY.TOKEN.XXXX" })).status, 200);
   return { ...u, c };
 }
 
