@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Maximize2, X } from "lucide-react";
+import { Maximize2, SkipForward, X } from "lucide-react";
 import WatchClient from "../WatchClient";
 
 export type WatchProps = React.ComponentProps<typeof WatchClient>;
@@ -135,11 +135,6 @@ function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: Pl
   const mode: Mode = !slot ? "mini" : scrolledPast ? (phone ? "stuck" : floatDismissed ? "inline" : "float") : "inline";
 
   useEffect(() => onStuck(mode === "stuck"), [mode, onStuck]);
-  useEffect(() => {
-    // Lets other floating buttons (scroll-to-top) move out of the way.
-    document.documentElement.toggleAttribute("data-floating-player", mode === "mini" || mode === "float");
-    return () => document.documentElement.removeAttribute("data-floating-player");
-  }, [mode]);
 
   // Tell the slot how much room the full player (video + control bar) needs.
   useEffect(() => {
@@ -151,8 +146,23 @@ function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: Pl
   }, [mode, onHeight]);
 
   const compact = mode === "mini" || mode === "float";
-  const videoWidth = compact ? (phone ? 128 : 360) : null;
+  const desktopWindow = compact && !phone;
+  const win = useFloatingWindow(desktopWindow);
+  const progress = useEpisodeProgress(session);
 
+  useEffect(() => {
+    // Lets other floating buttons (scroll-to-top) get out of the way: "phone", or the corner on desktop.
+    const value = !compact ? null : phone ? "phone" : win.corner;
+    if (value) document.documentElement.setAttribute("data-floating-player", value);
+    else document.documentElement.removeAttribute("data-floating-player");
+    return () => document.documentElement.removeAttribute("data-floating-player");
+  }, [compact, phone, win.corner]);
+
+  const back = () => (mode === "float" ? slot?.scrollIntoView({ behavior: "smooth", block: "center" }) : router.push(session.href));
+  const close = () => (mode === "float" ? setFloatDismissed(true) : onClose());
+  const next = session.props.nextEpisode ? `/watch/${session.props.anilistId}/${session.props.nextEpisode}` : null;
+
+  const phoneWidth = 128;
   const outerStyle: React.CSSProperties =
     mode === "inline"
       ? pos
@@ -162,9 +172,10 @@ function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: Pl
         ? { position: "fixed", top: 0, left: 0, right: 0, paddingTop: "env(safe-area-inset-top)", background: "#000" }
         : phone
           ? { position: "fixed", left: 8, right: 8, bottom: "calc(max(env(safe-area-inset-bottom), 0.4rem) + 4rem)" }
-          : { position: "fixed", right: 24, bottom: 24, width: videoWidth! };
+          : { position: "fixed", left: win.left, top: win.top, width: win.width };
 
   // In every mode but inline only the video shows; the control bar under it is clipped away.
+  const videoWidth = desktopWindow ? win.width : compact ? phoneWidth : undefined;
   const clipHeight = mode === "stuck" ? "calc(100vw * 9 / 16)" : compact ? `${Math.round((videoWidth! * 9) / 16)}px` : undefined;
 
   return (
@@ -172,39 +183,228 @@ function PlayerHost({ session, slot, onHeight, onStuck, onClose }: { session: Pl
       ref={outer}
       style={outerStyle}
       data-mode={mode}
-      className={`z-[45] ${mode === "inline" ? "" : "[&_.aspect-video]:!rounded-none"} ${
-        compact ? `overflow-hidden rounded-xl border border-white/10 bg-panel/95 shadow-2xl shadow-black/60 backdrop-blur-xl ${phone ? "flex items-center gap-3 pr-1.5" : "flex flex-col"}` : ""
-      }`}
+      className={[
+        "z-[45]",
+        mode === "inline" ? "" : "[&_.aspect-video]:!rounded-none",
+        compact ? "overflow-hidden rounded-xl bg-panel/95 shadow-2xl shadow-black/60 ring-1 ring-white/10" : "",
+        compact && phone ? "flex items-center gap-3 pr-1.5 backdrop-blur-xl" : "",
+        desktopWindow ? "group/pip animate-[pip-in_0.22s_ease-out]" : "",
+        desktopWindow && win.settled && !win.active ? "transition-[left,top] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" : "",
+        win.active ? "select-none [&_iframe]:pointer-events-none" : "",
+      ].join(" ")}
     >
-      <div className="relative shrink-0 overflow-hidden" style={{ width: videoWidth ?? undefined, height: clipHeight }}>
+      <div className="relative shrink-0 overflow-hidden" style={{ width: videoWidth, height: clipHeight }}>
         <WatchClient {...session.props} />
         {/* On a phone the mini player is too small to use the embed's own controls: tap to go back. */}
         {compact && phone && <button onClick={() => router.push(session.href)} className="absolute inset-0" aria-label={`Open ${session.title}`} />}
       </div>
-      {compact && (
-        <div className={`flex min-w-0 items-center gap-1 ${phone ? "flex-1" : "-order-1 border-b border-white/[0.06] px-3 py-2"}`}>
-          <button onClick={() => (mode === "float" ? slot?.scrollIntoView({ behavior: "smooth", block: "center" }) : router.push(session.href))} className="min-w-0 flex-1 text-left">
+
+      {compact && phone && (
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <button onClick={back} className="min-w-0 flex-1 text-left">
             <div className="truncate text-[13px] font-medium">{session.title}</div>
             <div className="font-mono text-[11px] text-muted">Episode {session.props.episode}</div>
           </button>
-          <button
-            onClick={() => (mode === "float" ? slot?.scrollIntoView({ behavior: "smooth", block: "center" }) : router.push(session.href))}
-            className="rounded-lg p-2 text-muted hover:bg-white/[0.06] hover:text-fg"
-            aria-label={mode === "float" ? "Back to the player" : "Open the watch page"}
-            title={mode === "float" ? "Back to the player" : "Open"}
-          >
-            <Maximize2 className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => (mode === "float" ? setFloatDismissed(true) : onClose())}
-            className="rounded-lg p-2 text-muted hover:bg-white/[0.06] hover:text-fg"
-            aria-label={mode === "float" ? "Stop floating" : "Close the player"}
-            title={mode === "float" ? "Stop floating" : "Close"}
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <IconButton onClick={back} label="Open the watch page" icon={Maximize2} />
+          <IconButton onClick={close} label="Close the player" icon={X} />
         </div>
+      )}
+
+      {desktopWindow && (
+        <>
+          {/* Hover controls over the top of the video; the strip doubles as the drag handle. */}
+          <div
+            onPointerDown={win.startMove}
+            onDoubleClick={back}
+            className={`absolute inset-x-0 top-0 flex cursor-grab items-center gap-1 bg-gradient-to-b from-black/80 via-black/40 to-transparent px-3 pb-6 pt-2 text-white transition-opacity duration-200 active:cursor-grabbing ${
+              win.active || win.peek ? "opacity-100" : "opacity-0 focus-within:opacity-100 group-hover/pip:opacity-100"
+            }`}
+          >
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[13px] font-medium drop-shadow">{session.title}</div>
+              <div className="font-mono text-[11px] text-white/70">Episode {session.props.episode}</div>
+            </div>
+            {next && <IconButton onClick={() => router.push(next)} label={`Episode ${session.props.nextEpisode}`} icon={SkipForward} light />}
+            <IconButton onClick={back} label={mode === "float" ? "Back to the player" : "Open the watch page"} icon={Maximize2} light />
+            <IconButton onClick={close} label={mode === "float" ? "Stop floating" : "Close the player"} icon={X} light />
+          </div>
+
+          {progress > 0 && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-white/10">
+              <div className="h-full bg-accent transition-[width] duration-700" style={{ width: `${progress}%` }} />
+            </div>
+          )}
+
+          {/* Resize from the corner that faces the middle of the screen. */}
+          <div
+            onPointerDown={win.startResize}
+            className={`absolute h-5 w-5 opacity-0 transition-opacity group-hover/pip:opacity-100 ${win.corner[0] === "b" ? "top-0" : "bottom-0"} ${win.corner[1] === "r" ? "left-0" : "right-0"} ${
+              win.corner === "br" || win.corner === "tl" ? "cursor-nwse-resize" : "cursor-nesw-resize"
+            }`}
+            aria-hidden
+          >
+            <span className={`absolute h-2.5 w-2.5 border-white/70 ${win.corner[0] === "b" ? "top-1 border-t-2" : "bottom-1 border-b-2"} ${win.corner[1] === "r" ? "left-1 border-l-2" : "right-1 border-r-2"}`} />
+          </div>
+        </>
       )}
     </div>
   );
+}
+
+function IconButton({ onClick, label, icon: Icon, light }: { onClick: () => void; label: string; icon: typeof X; light?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      onPointerDown={(e) => e.stopPropagation()}
+      className={`shrink-0 rounded-lg p-2 transition-colors ${light ? "text-white/85 hover:bg-white/15 hover:text-white" : "text-muted hover:bg-white/[0.06] hover:text-fg"}`}
+      aria-label={label}
+      title={label}
+    >
+      <Icon className="h-4 w-4" />
+    </button>
+  );
+}
+
+/** How far through the episode we are, from the player's own progress saves. */
+function useEpisodeProgress(session: PlayerSession) {
+  const [pct, setPct] = useState(0);
+  const { anilistId, episode } = session.props;
+  useEffect(() => {
+    setPct(0);
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ anilistId: number; episode: number; pct: number }>).detail;
+      if (d.anilistId === anilistId && d.episode === episode) setPct(d.pct);
+    };
+    window.addEventListener("anikumo:progress", on);
+    return () => window.removeEventListener("anikumo:progress", on);
+  }, [anilistId, episode]);
+  return pct;
+}
+
+type Corner = "tl" | "tr" | "bl" | "br";
+const STORE = "ak_pip";
+const MARGIN = 24;
+const TOP_MARGIN = 80; // clears the navbar
+const MIN_W = 280;
+
+function readStored(): { corner: Corner; width: number } {
+  try {
+    const v = JSON.parse(localStorage.getItem(STORE) ?? "{}");
+    return { corner: ["tl", "tr", "bl", "br"].includes(v.corner) ? v.corner : "br", width: Number(v.width) || 400 };
+  } catch {
+    return { corner: "br", width: 400 };
+  }
+}
+
+/**
+ * The desktop picture-in-picture window: drag it anywhere and it snaps to the nearest corner,
+ * drag its inner corner to resize (16:9), and both are remembered.
+ */
+function useFloatingWindow(enabled: boolean) {
+  const [{ corner, width }, setPlace] = useState(readStored);
+  // Only ever rendered in the browser (the player mounts after hydration), so window is safe here.
+  const [view, setView] = useState(() => ({ w: document.documentElement.clientWidth, h: window.innerHeight }));
+  const [drag, setDrag] = useState<{ left: number; top: number } | null>(null);
+  const [resizing, setResizing] = useState(false);
+  const [peek, setPeek] = useState(false);
+  const [settled, setSettled] = useState(false);
+
+  useEffect(() => {
+    const on = () => setView({ w: document.documentElement.clientWidth, h: window.innerHeight });
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+
+  // Show the controls for a moment when the window appears, so people know they exist.
+  useEffect(() => {
+    setSettled(false);
+    if (!enabled) return;
+    setPeek(true);
+    const t = setTimeout(() => setPeek(false), 2200);
+    // Animate later moves (snapping, window resizes) but not the jump into floating mode.
+    const s = setTimeout(() => setSettled(true), 350);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(s);
+    };
+  }, [enabled]);
+
+  const maxW = Math.max(MIN_W, Math.min(720, view.w * 0.6));
+  const w = Math.round(Math.min(Math.max(width, MIN_W), maxW));
+  const h = Math.round((w * 9) / 16);
+  const home = {
+    left: corner[1] === "r" ? view.w - w - MARGIN : MARGIN,
+    top: corner[0] === "b" ? view.h - h - MARGIN : TOP_MARGIN,
+  };
+
+  const save = (next: { corner: Corner; width: number }) => {
+    setPlace(next);
+    try {
+      localStorage.setItem(STORE, JSON.stringify(next));
+    } catch {}
+  };
+
+  const startMove = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    const start = { x: e.clientX, y: e.clientY, left: home.left, top: home.top };
+    let moved = false;
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - start.x;
+      const dy = ev.clientY - start.y;
+      if (!moved && Math.hypot(dx, dy) < 4) return;
+      moved = true;
+      setDrag({
+        left: Math.min(Math.max(start.left + dx, 8), view.w - w - 8),
+        top: Math.min(Math.max(start.top + dy, 8), view.h - h - 8),
+      });
+    };
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      if (!moved) return;
+      // Snap to whichever corner the middle of the window is closest to.
+      const cx = start.left + (ev.clientX - start.x) + w / 2;
+      const cy = start.top + (ev.clientY - start.y) + h / 2;
+      save({ corner: `${cy < view.h / 2 ? "t" : "b"}${cx < view.w / 2 ? "l" : "r"}` as Corner, width: w });
+      setDrag(null);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
+  const startResize = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const grow = corner[1] === "r" ? -1 : 1; // the handle is on the side facing the middle
+    setResizing(true);
+    let latest = w;
+    const move = (ev: PointerEvent) => {
+      latest = Math.round(Math.min(Math.max(w + grow * (ev.clientX - startX), MIN_W), maxW));
+      setPlace((p) => ({ ...p, width: latest }));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      setResizing(false);
+      save({ corner, width: latest });
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
+  // While resizing, keep the anchored corner fixed so the window grows towards the middle.
+  return {
+    corner,
+    width: w,
+    left: drag?.left ?? home.left,
+    top: drag?.top ?? home.top,
+    active: !!drag || resizing,
+    settled,
+    peek,
+    startMove,
+    startResize,
+  };
 }

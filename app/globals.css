@@ -440,12 +440,24 @@ button.chip:hover {
 }
 
 /* Keep scroll-to-top clear of the floating/mini video player (see PlayerProvider). */
-html[data-floating-player] .scroll-top {
+html[data-floating-player="phone"] .scroll-top {
   bottom: calc(max(env(safe-area-inset-bottom), 0.4rem) + 4rem + 72px + 0.75rem);
 }
 @media (min-width: 768px) {
-  html[data-floating-player] .scroll-top {
-    bottom: 290px;
-    right: 24px;
+  html[data-floating-player="br"] .scroll-top {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* The desktop floating player popping in. */
+@keyframes pip-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
