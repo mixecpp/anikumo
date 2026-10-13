@@ -245,7 +245,6 @@ export default function RoomClient({ code, player, episodes }: { code: string; p
 
   const room = data?.room;
   const people = data?.members ?? [];
-  const inviteLink = typeof window !== "undefined" ? `${location.origin}/watch-together/${code}` : "";
 
   return (
     <div className="mx-auto max-w-[1600px] px-4 pt-5 md:px-8">
@@ -266,7 +265,7 @@ export default function RoomClient({ code, player, episodes }: { code: string; p
           </div>
         </div>
         <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
-        <CopyInvite code={code} link={inviteLink} />
+        <CopyInvite code={code} />
         {isHost && room && <HostMenu code={code} room={room} onChanged={poll} />}
         {data?.me?.member && (
           <button
@@ -343,20 +342,24 @@ export default function RoomClient({ code, player, episodes }: { code: string; p
   );
 }
 
-function CopyInvite({ code, link }: { code: string; link: string }) {
+/** Copies just the room code (people join with it from the Watch Together page). */
+function CopyInvite({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
       onClick={async () => {
         try {
-          if (navigator.share && matchMedia("(hover: none)").matches) await navigator.share({ url: link, title: "Watch with me on AniKumo" });
-          else await navigator.clipboard.writeText(link);
+          await navigator.clipboard.writeText(code);
           setCopied(true);
+          toast("Room code copied", "info");
           setTimeout(() => setCopied(false), 1500);
-        } catch {}
+        } catch {
+          toast(`Room code: ${code}`, "info");
+        }
       }}
       className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 font-mono text-xs tracking-[0.2em] transition-colors hover:border-white/20"
-      title="Copy invite link"
+      title="Copy room code"
+      aria-label={`Copy room code ${code}`}
     >
       {code}
       {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-muted" />}
