@@ -104,7 +104,7 @@ export default function ListView({ initial, meta }: { initial: ListEntryDTO[]; m
           <Link href="/browse" className="btn btn-primary">
             <Plus className="h-4 w-4" /> Find shows
           </Link>
-          <Link href="/account/settings#import" className="btn btn-ghost">
+          <Link href="/account/settings?tab=data" className="btn btn-ghost">
             <Upload className="h-4 w-4" /> Import from MAL / AniList
           </Link>
         </div>

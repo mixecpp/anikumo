@@ -218,7 +218,7 @@ export default function BrowseView({ params, initial, error, presets: initialPre
         {hiddenEcchi && (
           <p className="mt-3 text-xs text-muted">
             Ecchi titles are hidden by your{" "}
-            <Link href="/account/settings#content" className="underline underline-offset-2 hover:text-fg">
+            <Link href="/account/settings?tab=preferences" className="underline underline-offset-2 hover:text-fg">
               content settings
             </Link>
             .

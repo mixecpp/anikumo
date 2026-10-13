@@ -3,12 +3,17 @@ import { requirePageUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getPrefs } from "@/lib/prefs";
 import SettingsForms from "@/components/account/SettingsForms";
+import { SETTINGS_TABS, type SettingsTab } from "@/lib/settings-tabs";
 import { readWebhook } from "@/lib/notifications";
 import { isVisibility, isWallSetting, parseSections } from "@/lib/privacy-shared";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default async function SettingsPage() {
+type Props = { searchParams: Promise<{ tab?: string }> };
+
+export default async function SettingsPage({ searchParams }: Props) {
+  const requested = (await searchParams).tab;
+  const tab: SettingsTab = SETTINGS_TABS.some((t) => t.id === requested) ? (requested as SettingsTab) : "account";
   const userId = (await requirePageUserId("/account/settings"));
   const [u, prefs] = await Promise.all([
     prisma.user.findUniqueOrThrow({
@@ -19,6 +24,7 @@ export default async function SettingsPage() {
   ]);
   return (
     <SettingsForms
+      tab={tab}
       prefs={prefs}
       user={{
         username: u.username,

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo";
-import { Award, Eye, Heart, Lock, MessageSquare, Settings2, Star } from "lucide-react";
+import { Award, Eye, Heart, Lock, MessageSquare, Star } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getUserId, roleOf } from "@/lib/auth";
 import { getAccountStats } from "@/lib/account";
@@ -112,9 +112,6 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           <Eye className="h-4 w-4" /> View as visitor
         </Link>
       )}
-      <Link href="/account/settings#visibility" className="btn btn-ghost">
-        <Settings2 className="h-4 w-4" /> Privacy
-      </Link>
       <ShareProfile username={user.username} className="!flex-none" />
     </>
   ) : (
@@ -130,7 +127,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
           <Eye className="h-4 w-4" />
           {user.profileVisibility === "private" ? "Only you can see this." : "Only your followers can see this."}
-          <Link href="/account/settings#visibility" className="underline">
+          <Link href="/account/settings?tab=privacy" className="underline">
             Privacy settings
           </Link>
         </div>

@@ -61,10 +61,11 @@ export default function Hero({ items }: { items: HeroItem[] }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-xl"
+            className="min-w-0 max-w-xl"
           >
             <div className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted">Trending · {i + 1}</div>
-            <h1 className="text-4xl font-semibold leading-[1.05] tracking-tight md:text-6xl">{cur.title}</h1>
+            {/* Long titles stop at two lines (three on desktop) with "…" instead of pushing the banner out of shape. */}
+            <h1 title={cur.title} className="line-clamp-2 break-words text-3xl font-semibold leading-[1.08] tracking-tight sm:text-4xl md:line-clamp-3 md:text-6xl">{cur.title}</h1>
             <div className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-fg/70">
               {cur.score && (
                 <span className="flex items-center gap-1 text-fg">

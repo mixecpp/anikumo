@@ -142,7 +142,7 @@ function EditSheet({ open, onClose, username, bio: initialBio, banner: initialBa
 
               <p className="text-xs text-muted">
                 Who can see your profile and comment on it is in{" "}
-                <Link href="/account/settings#visibility" onClick={onClose} className="text-fg underline-offset-2 hover:underline">
+                <Link href="/account/settings?tab=privacy" onClick={onClose} className="text-fg underline-offset-2 hover:underline">
                   privacy settings
                 </Link>
                 .

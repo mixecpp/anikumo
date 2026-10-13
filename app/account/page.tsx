@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Award, BarChart3, ChevronRight, Lock, Sparkles, Trophy } from "lucide-react";
+import { Award, ChevronRight, Lock } from "lucide-react";
 import { requirePageUserId } from "@/lib/auth";
 import { getAccountStats } from "@/lib/account";
 import { getContinueWatching } from "@/lib/progress";
@@ -51,23 +51,11 @@ export default async function AccountOverview() {
     { key: "avg", label: "Avg per active day", value: stats.avgPerActiveDay, format: "duration" },
   ];
 
-  const year = new Date().getFullYear();
 
   return (
     <div className="space-y-12">
       <StatTiles tiles={tiles} />
 
-      <div className="flex flex-wrap gap-2">
-        <Link href="/account/stats" className="btn btn-ghost !py-1.5 !text-xs">
-          <BarChart3 className="h-3.5 w-3.5" /> Full stats
-        </Link>
-        <Link href={`/account/year/${year}`} className="btn btn-ghost !py-1.5 !text-xs">
-          <Sparkles className="h-3.5 w-3.5" /> {year} in review
-        </Link>
-        <Link href="/leaderboard" className="btn btn-ghost !py-1.5 !text-xs">
-          <Trophy className="h-3.5 w-3.5" /> Leaderboard
-        </Link>
-      </div>
 
       <GoalsPanel goals={goals} />
 

@@ -6,7 +6,8 @@ import { ShieldAlert } from "lucide-react";
 /**
  * Discourages casual poking around with browser developer tools:
  *  - blocks the usual shortcuts (F12, Ctrl+Shift+I/J/C/K, Ctrl+U and the Mac equivalents)
- *  - if developer tools are open anyway, covers the site until they're closed
+ *  - if developer tools are open anyway, the tab is closed (browsers only let a page close a tab
+ *    it opened itself, so otherwise the page is wiped and replaced with a blank one)
  * Right-click stays as normal (so "open link in new tab" works).
  *
  * Detection uses a `debugger` statement: it does nothing when developer tools are closed, and
@@ -15,6 +16,22 @@ import { ShieldAlert } from "lucide-react";
  *
  * This is a deterrent, not security: anything secret must stay on the server.
  */
+const pause = new Function("debugger") as () => void;
+
+/** Close the tab if the browser allows it; otherwise blank it (replacing this history entry). */
+function shutDown() {
+  try {
+    window.stop();
+    document.documentElement.innerHTML = "";
+  } catch {}
+  try {
+    window.open("", "_self");
+    window.close();
+  } catch {}
+  // Still here (tabs the visitor opened themselves can't be closed by a page): leave nothing behind.
+  setTimeout(() => location.replace("about:blank"), 50);
+}
+
 export default function DevtoolsGuard({ enabled }: { enabled: boolean }) {
   const [open, setOpen] = useState(false);
 
@@ -43,11 +60,14 @@ export default function DevtoolsGuard({ enabled }: { enabled: boolean }) {
     let hits = 0;
     const check = () => {
       const start = performance.now();
-      // eslint-disable-next-line no-debugger
-      debugger;
+      // Built at run time: production builds strip a literal debugger statement.
+      pause();
       const paused = performance.now() - start > 800;
       hits = paused ? hits + 1 : 0;
-      setOpen(paused || hits > 0);
+      if (paused) {
+        setOpen(true);
+        shutDown();
+      }
     };
     const t = setInterval(check, 1500);
     return () => clearInterval(t);

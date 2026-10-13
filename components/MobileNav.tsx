@@ -15,8 +15,10 @@ export default function MobileNav({ libraryEnabled, user, latestChangelog }: { l
   const pathname = usePathname();
   const t = useT();
   const unseen = useChangelogUnseen(latestChangelog);
-  // Five slots: Home, Browse, Seasonal, Feed and Account (Schedule and Charts live on the home page and menus).
-  const links = navLinks(libraryEnabled).filter((l) => l.icon !== "charts" && l.icon !== "library" && l.icon !== "schedule");
+  // Five slots, mirroring the desktop menus: Home, Browse (Seasonal, Schedule, Charts and Trailers
+  // are tabs on top of those pages), Feed, Together and Account.
+  const links = navLinks(libraryEnabled).filter((l) => ["home", "browse", "feed", "together"].includes(l.icon));
+  const browseHere = ["/browse", "/season", "/schedule", "/charts", "/trailers"].some((h) => isActive(pathname, h));
   const accountHref = user ? "/account" : "/login";
   const accountActive = isActive(pathname, "/account") || isActive(pathname, "/login") || isActive(pathname, "/register");
   const item = (active: boolean) => `press flex flex-1 flex-col items-center gap-1 py-1 text-[10px] font-medium transition-colors ${active ? "text-fg" : "text-muted"}`;
@@ -24,7 +26,7 @@ export default function MobileNav({ libraryEnabled, user, latestChangelog }: { l
   return (
     <nav aria-label="Primary" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-white/[0.06] bg-bg/85 px-2 pb-[max(env(safe-area-inset-bottom),0.4rem)] pt-1.5 backdrop-blur-xl lg:hidden">
       {links.map((l) => {
-        const active = isActive(pathname, l.href);
+        const active = l.icon === "browse" ? browseHere : isActive(pathname, l.href);
         return (
           <Link key={l.href} href={l.href} aria-current={active ? "page" : undefined} className={item(active)}>
             <NavIcon name={l.icon} className="h-5 w-5" strokeWidth={active ? 2.2 : 1.7} />

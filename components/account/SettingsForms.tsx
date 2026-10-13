@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Bell, Check, Database, Download, Eye, EyeOff, Globe, KeyRound, Keyboard, LoaderCircle, ShieldCheck, SlidersHorizontal, TriangleAlert, Upload, UserRound } from "lucide-react";
+import { Check, Download, Eye, EyeOff, LoaderCircle } from "lucide-react";
+import { SETTINGS_TABS, type SettingsTab } from "@/lib/settings-tabs";
 import type { Prefs } from "@/lib/prefs-shared";
 import { AlertsCard, ImportCard, KeyboardCard, PreferencesCard, SecurityCard } from "./SettingsExtra";
 import { ProfilePrivacyCard, type PrivacyUser } from "./ProfilePrivacy";
@@ -13,19 +14,6 @@ import ConfirmButton from "./ConfirmButton";
 import AvatarPicker from "./AvatarPicker";
 
 const COLORS = ["#f6a57c", "#fb7185", "#f97316", "#eab308", "#22c55e", "#14b8a6", "#06b6d4", "#3b82f6", "#8b5cf6", "#d946ef", "#71717a"];
-
-const SECTIONS = [
-  { id: "profile", label: "Profile", icon: UserRound },
-  { id: "visibility", label: "Profile & privacy", icon: Globe },
-  { id: "preferences", label: "Preferences", icon: SlidersHorizontal },
-  { id: "alerts", label: "Alerts", icon: Bell },
-  { id: "password", label: "Password", icon: KeyRound },
-  { id: "security", label: "Security", icon: ShieldCheck },
-  { id: "import", label: "Import", icon: Upload },
-  { id: "keyboard", label: "Keyboard", icon: Keyboard },
-  { id: "data", label: "Your data", icon: Database },
-  { id: "danger", label: "Delete account", icon: TriangleAlert },
-] as const;
 
 type User = {
   username: string;
@@ -154,9 +142,15 @@ function useDone(): [boolean, () => void] {
   ];
 }
 
-export default function SettingsForms({ user, prefs }: { user: User; prefs: Prefs }) {
+// Old links pointed at sections of one long page (#visibility etc.); send them to the right page.
+const LEGACY: Record<string, SettingsTab> = { profile: "account", password: "account", visibility: "privacy", preferences: "preferences", content: "preferences", keyboard: "preferences", alerts: "notifications", security: "security", import: "data", data: "data", danger: "data" };
+
+export default function SettingsForms({ user, prefs, tab }: { user: User; prefs: Prefs; tab: SettingsTab }) {
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState<string>("profile");
+  useEffect(() => {
+    const legacy = LEGACY[location.hash.slice(1)];
+    if (legacy && legacy !== tab) router.replace(legacy === "account" ? "/account/settings" : `/account/settings?tab=${legacy}`);
+  }, [tab, router]);
 
   const [username, setUsername] = useState(user.username);
   const [color, setColor] = useState(user.avatarColor);
@@ -172,26 +166,6 @@ export default function SettingsForms({ user, prefs }: { user: User; prefs: Pref
   const [deleteName, setDeleteName] = useState("");
   const [deleteBusy, setDeleteBusy] = useState(false);
 
-  useEffect(() => {
-    const update = () => {
-      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
-      if (atBottom) return setActiveSection(SECTIONS[SECTIONS.length - 1].id);
-      const line = window.innerHeight * 0.3;
-      let current: string = SECTIONS[0].id;
-      for (const s of SECTIONS) {
-        const el = document.getElementById(s.id);
-        if (el && el.getBoundingClientRect().top <= line) current = s.id;
-      }
-      setActiveSection(current);
-    };
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, []);
 
   const usernameValid = /^[a-zA-Z0-9_]{3,20}$/.test(username);
   const profileDirty = username !== user.username || color !== user.avatarColor;
@@ -240,33 +214,14 @@ export default function SettingsForms({ user, prefs }: { user: User; prefs: Pref
   }
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[200px_1fr]">
-      <nav className="hidden lg:block">
-        <ul className="sticky top-24 space-y-0.5">
-          {SECTIONS.map(({ id, label, icon: Icon }) => {
-            const on = activeSection === id;
-            return (
-              <li key={id}>
-                <a
-                  href={`#${id}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setActiveSection(id);
-                    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
-                  className={`relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${on ? "text-fg" : "text-muted hover:text-fg"} ${id === "danger" && on ? "!text-red-300" : ""}`}
-                >
-                  {on && <motion.span layoutId="settings-nav" className="absolute inset-0 rounded-lg bg-white/[0.07]" transition={{ type: "spring", stiffness: 500, damping: 40 }} />}
-                  <Icon className="relative h-4 w-4" />
-                  <span className="relative">{label}</span>
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      <div className="min-w-0 space-y-6 lg:pb-[50vh]">
+    <div>
+      <header className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">{SETTINGS_TABS.find((t) => t.id === tab)?.title}</h1>
+        <p className="mt-1 text-sm text-muted">{SETTINGS_TABS.find((t) => t.id === tab)?.description}</p>
+      </header>
+      <div className="min-w-0 max-w-2xl space-y-6">
+        {tab === "account" && (
+<>
         <Card
           id="profile"
           title="Profile"
@@ -331,11 +286,27 @@ export default function SettingsForms({ user, prefs }: { user: User; prefs: Pref
             </div>
           </div>
         </Card>
+</>
+        )}
 
+        {tab === "privacy" && (
+<>
         <ProfilePrivacyCard user={user.privacy} />
+</>
+        )}
+        {tab === "preferences" && (
+<>
         <PreferencesCard prefs={prefs} />
+</>
+        )}
+        {tab === "notifications" && (
+<>
         <AlertsCard discordWebhook={user.discordWebhook} calendarOn={user.calendarOn} />
+</>
+        )}
 
+        {tab === "account" && (
+<>
         <Card
           id="password"
           title="Password"
@@ -375,13 +346,29 @@ export default function SettingsForms({ user, prefs }: { user: User; prefs: Pref
             </Field>
           </div>
         </Card>
+</>
+        )}
 
+        {tab === "security" && (
+<>
         <SecurityCard totpEnabled={user.totpEnabled} hasRecoveryKey={user.hasRecoveryKey} />
+</>
+        )}
+        {tab === "data" && (
+<>
         <ImportCard />
+</>
+        )}
+        {tab === "preferences" && (
+<>
         <div className="keyboard-only">
           <KeyboardCard shortcuts={prefs.shortcuts} />
         </div>
+</>
+        )}
 
+        {tab === "data" && (
+<>
         <Card id="data" title="Your data" description="Take your history with you, or start over.">
           <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.06]">
             <div className="flex flex-wrap items-center justify-between gap-3 p-4">
@@ -402,7 +389,11 @@ export default function SettingsForms({ user, prefs }: { user: User; prefs: Pref
             </div>
           </div>
         </Card>
+</>
+        )}
 
+        {tab === "data" && (
+<>
         <Card
           id="danger"
           danger
@@ -425,6 +416,8 @@ export default function SettingsForms({ user, prefs }: { user: User; prefs: Pref
             </Field>
           </div>
         </Card>
+</>
+        )}
       </div>
     </div>
   );

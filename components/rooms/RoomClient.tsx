@@ -213,7 +213,6 @@ export default function RoomClient({ code, player, episodes }: { code: string; p
       fetch(`/api/rooms/${code}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "state", position: l.pos, playing: l.playing }) }).catch(() => {});
     }, 1000);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, code]);
 
   const sync = useCallback(() => {

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { SocialIcons } from "@/components/Socials";
 import PageViews from "@/components/PageViews";
+import SectionTabs from "@/components/SectionTabs";
 import TrackerShield from "@/components/TrackerShield";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -75,6 +76,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <AmbientBackground />
               <Navbar libraryEnabled={libraryEnabled} />
               <main id="main" className="pb-28 lg:pb-16">
+                <SectionTabs />
                 {children}
               </main>
               {/* Pages already in the top bar (Browse, Seasonal, Charts…) aren't repeated here. */}

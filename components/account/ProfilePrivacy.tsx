@@ -2,8 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { ImageIcon, LoaderCircle, Search, X } from "lucide-react";
+import { LoaderCircle, Search, X } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { SECTIONS, VISIBILITIES, WALL_SETTINGS, type Section, type Sections, type Visibility, type WallSetting } from "@/lib/privacy-shared";
 import { Toggle } from "../list/EntryEditor";

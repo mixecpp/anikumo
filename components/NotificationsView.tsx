@@ -79,7 +79,7 @@ export default function NotificationsView({ initial }: { initial: N[] }) {
               <Trash2 className="h-3.5 w-3.5" /> Clear read
             </button>
           )}
-          <Link href="/account/settings#alerts" className="btn btn-ghost btn-icon !h-8 !w-8" aria-label="Notification settings">
+          <Link href="/account/settings?tab=notifications" className="btn btn-ghost btn-icon !h-8 !w-8" aria-label="Notification settings">
             <Settings className="h-3.5 w-3.5" />
           </Link>
         </div>

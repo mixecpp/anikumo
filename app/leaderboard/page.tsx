@@ -41,7 +41,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
           ))}
         </div>
         {me && !me.profilePublic && (
-          <Link href="/account/settings#visibility" className="flex items-center gap-1.5 text-xs text-muted hover:text-fg">
+          <Link href="/account/settings?tab=privacy" className="flex items-center gap-1.5 text-xs text-muted hover:text-fg">
             <Eye className="h-3.5 w-3.5" /> Make your profile public to appear here
           </Link>
         )}

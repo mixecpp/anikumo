@@ -81,7 +81,7 @@ export default function ProfileWall({ username, isOwner, loggedIn }: { username:
           {data && data.comments.length > 0 && <span className="font-mono text-[11px] text-muted">{data.comments.length}{data.next ? "+" : ""}</span>}
         </h2>
         {isOwner && (
-          <Link href="/account/settings#visibility" className="text-xs text-muted hover:text-fg">
+          <Link href="/account/settings?tab=privacy" className="text-xs text-muted hover:text-fg">
             {data?.off ? "Turned off · change" : data?.followersOnly ? "Followers only · change" : "Who can comment"}
           </Link>
         )}
