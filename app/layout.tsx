@@ -19,8 +19,7 @@ import ServiceWorker from "@/components/ServiceWorker";
 import { PrefsProvider } from "@/components/PrefsProvider";
 import { libraryRoot } from "@/lib/library";
 import { getPrefs } from "@/lib/prefs";
-import { getUser, roleOf } from "@/lib/auth";
-import DevtoolsGuard from "@/components/DevtoolsGuard";
+import { getUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { translator } from "@/lib/i18n";
 import { appUrl } from "@/lib/url";
@@ -107,7 +106,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <ScrollTop />
               <PageViews />
               <TrackerShield />
-              <DevtoolsGuard enabled={roleOf(user) !== "owner"} />
               <Toaster />
               <Shortcuts />
               <CommandPalette />
