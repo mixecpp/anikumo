@@ -4,18 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, Clapperboard, Medal, Search } from "lucide-react";
-import { isActive, type MenuEntry, type MenuItem } from "@/lib/nav";
+import { ChevronDown } from "lucide-react";
+import { isActive, type MenuEntry } from "@/lib/nav";
 import { useT } from "./PrefsProvider";
-import NavIcon from "./NavIcon";
-
-function ItemIcon({ icon }: { icon: MenuItem["icon"] }) {
-  const cls = "h-4 w-4";
-  if (icon === "trailers") return <Clapperboard className={cls} aria-hidden />;
-  if (icon === "leaderboard") return <Medal className={cls} aria-hidden />;
-  if (icon === "all") return <Search className={cls} aria-hidden />;
-  return <NavIcon name={icon} className={cls} />;
-}
 
 /**
  * Desktop top bar links. Plain links for single pages; "Browse" and "Community" open a small
@@ -74,14 +65,14 @@ export default function NavLinks({ menu }: { menu: MenuEntry[] }) {
             <AnimatePresence>
               {isOpen && (
                 <motion.div
-                  initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                  transition={{ duration: 0.14 }}
-                  // pt-2 bridges the gap so the menu doesn't close while the mouse moves down to it.
-                  className="absolute left-0 top-full z-50 pt-2"
+                  initial={{ opacity: 0, y: -2 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12 }}
+                  // pt-1.5 bridges the gap so the menu doesn't close while the mouse moves down to it.
+                  className="absolute left-0 top-full z-50 pt-1.5"
                 >
-                  <div role="menu" className="glass-strong w-72 rounded-2xl p-1.5 shadow-2xl shadow-black/40">
+                  <div role="menu" className="min-w-44 rounded-lg border border-line bg-panel py-1 shadow-lg shadow-black/30">
                     {entry.items.map((item) => {
                       const here = isActive(pathname, item.href);
                       return (
@@ -90,15 +81,9 @@ export default function NavLinks({ menu }: { menu: MenuEntry[] }) {
                           href={item.href}
                           role="menuitem"
                           aria-current={here ? "page" : undefined}
-                          className={`group flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors ${here ? "bg-white/[0.07]" : "hover:bg-white/[0.05]"}`}
+                          className={`block px-3.5 py-1.5 text-sm transition-colors hover:bg-white/[0.04] hover:text-fg ${here ? "text-fg" : "text-muted"}`}
                         >
-                          <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border transition-colors ${here ? "border-accent/40 bg-accent/15 text-accent" : "border-white/[0.07] bg-white/[0.03] text-muted group-hover:text-fg"}`}>
-                            <ItemIcon icon={item.icon} />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-sm text-fg">{item.label}</span>
-                            <span className="block truncate text-xs text-muted">{item.hint}</span>
-                          </span>
+                          {item.label}
                         </Link>
                       );
                     })}
