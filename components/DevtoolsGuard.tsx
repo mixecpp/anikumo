@@ -11,7 +11,7 @@ import { ShieldAlert } from "lucide-react";
  *
  * Detection uses a `debugger` statement: it does nothing when developer tools are closed, and
  * pauses when they're open, so a long gap means they're open. Unlike window-size checks it isn't
- * fooled by page zoom or browser side panels. Staff accounts don't get this (they need the tools).
+ * fooled by page zoom or browser side panels. Only the site owner is exempt.
  *
  * This is a deterrent, not security: anything secret must stay on the server.
  */

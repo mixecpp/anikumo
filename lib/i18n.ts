@@ -10,6 +10,7 @@ const en = {
   "nav.account": "Account",
   "nav.feed": "Feed",
   "nav.together": "Together",
+  "nav.community": "Community",
   "search.placeholder": "Search",
   "search.recent": "Recently viewed",
   "search.clear": "Clear",

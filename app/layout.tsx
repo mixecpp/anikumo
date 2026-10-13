@@ -82,7 +82,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                   <span className="font-medium text-fg/80">AniKumo</span>
                   <nav className="flex flex-wrap items-center gap-x-3.5 gap-y-1" aria-label="Footer">
-                    <Link href="/trailers" className="hover:text-fg">Trailers</Link>
                     <Link href="/compare" className="hover:text-fg">Compare</Link>
                     <Link href="/changelog" className="hover:text-fg">What&apos;s new</Link>
                     <Link href="/rules" className="hover:text-fg">Rules</Link>
@@ -106,7 +105,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <ScrollTop />
               <PageViews />
               <TrackerShield />
-              <DevtoolsGuard enabled={roleOf(user) === "user"} />
+              <DevtoolsGuard enabled={roleOf(user) !== "owner"} />
               <Toaster />
               <Shortcuts />
               <CommandPalette />

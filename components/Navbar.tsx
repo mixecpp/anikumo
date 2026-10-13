@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getUser, isAdminUser, roleOf } from "@/lib/auth";
-import { navLinks } from "@/lib/nav";
+import { navMenu } from "@/lib/nav";
 import { syncEpisodeAlerts, unreadCount } from "@/lib/notifications";
 import SearchBox from "./SearchBox";
 import UserMenu from "./UserMenu";
@@ -27,7 +27,7 @@ export default async function Navbar({ libraryEnabled }: { libraryEnabled: boole
         <Link href="/" aria-label="AniKumo home" className="shrink-0">
           <Logo />
         </Link>
-        <NavLinks links={navLinks(libraryEnabled)} />
+        <NavLinks menu={navMenu(libraryEnabled)} />
         <div className="flex flex-1 justify-end">
           <SearchBox />
         </div>
