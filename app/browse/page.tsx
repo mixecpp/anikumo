@@ -17,13 +17,13 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const season = SEASONS.find(([k]) => k === p.season)?.[1];
   if (keys.length === 1 && p.genres?.length === 1) {
     const g = p.genres[0];
-    return pageMeta({ title: `Best ${g} anime`, description: `The most popular ${g.toLowerCase()} anime, from new seasonal shows to all-time classics. Filter by year, score and length.`, path: `/browse?genre=${encodeURIComponent(g)}` });
+    return pageMeta({ title: `Best ${g} Anime to Watch Online Free`, description: `The most popular ${g.toLowerCase()} anime, from new seasonal shows to all-time classics. Watch ${g.toLowerCase()} anime online free with no ads on AniKumo.`, path: `/browse?genre=${encodeURIComponent(g)}`, keywords: [`${g.toLowerCase()} anime`, `best ${g.toLowerCase()} anime`, `watch ${g.toLowerCase()} anime`] });
   }
   if (keys.length === 2 && season && p.year && raw.season && raw.year) {
-    return pageMeta({ title: `${season} ${p.year} anime`, description: `Every anime from ${season} ${p.year}: TV series, movies and OVAs, sorted by popularity.`, path: `/browse?season=${p.season}&year=${p.year}` });
+    return pageMeta({ title: `${season} ${p.year} Anime: Full List`, description: `Every anime from ${season} ${p.year}: TV series, movies and OVAs, sorted by popularity. Watch them online free with no ads on AniKumo.`, path: `/browse?season=${p.season}&year=${p.year}`, keywords: [`${season} ${p.year} anime`.toLowerCase(), `${p.year} anime`] });
   }
   if (p.q) return { title: `Results for “${p.q}”`, robots: { index: false, follow: true } };
-  return pageMeta({ title: "Browse anime", description: "Browse thousands of anime by genre, tags, season, length and score. Find something new to watch.", path: "/browse", noindex: keys.length > 0 });
+  return pageMeta({ title: "Browse Anime by Genre, Season & Score", description: "Browse thousands of anime by genre, tags, season, length and score, then watch online free with no ads. Find your next anime on AniKumo.", path: "/browse", noindex: keys.length > 0, keywords: ["browse anime", "anime list", "anime by genre", "find anime to watch", "anime database"] });
 }
 
 export default async function BrowsePage({ searchParams }: { searchParams: Promise<SP> }) {

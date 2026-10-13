@@ -53,3 +53,4 @@ next-env.d.ts
 /prisma/uploads
 
 shadow-tmp.db*
+*.tmp.mjs

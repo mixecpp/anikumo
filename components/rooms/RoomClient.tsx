@@ -58,8 +58,11 @@ type Poll = { serverNow: number; room: RoomState; members: Person[]; guests: num
 type PlayerProps = WatchProps & { href: string; image: string };
 
 const POLL_MS = 2500;
-const DRIFT_SHOW = 10;
-const DRIFT_AUTO = 20;
+// Everyone follows the host automatically: more than DRIFT seconds off → jump to the host,
+// at most once every SYNC_GAP (each jump reloads the embedded player at the host's time).
+const DRIFT = 4;
+const SYNC_GAP = 8000;
+const SHARE_EVERY = 2000;
 
 async function act(code: string, body: object) {
   const res = await fetch(`/api/rooms/${code}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -67,11 +70,6 @@ async function act(code: string, body: object) {
   if (!res.ok) toast(json.error ?? "Something went wrong", "error");
   return res.ok;
 }
-
-const clock = (s: number) => {
-  const t = Math.max(0, Math.floor(s));
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
-};
 
 /**
  * Watch Together room. Polls the room every few seconds for its state, people and chat.
@@ -89,7 +87,7 @@ export default function RoomClient({ code, player, episodes }: { code: string; p
   const [tab, setTab] = useState<"chat" | "people">("chat");
   const [syncKey, setSyncKey] = useState<string | undefined>(undefined);
   const [resumeAt, setResumeAt] = useState(player.resumeAt);
-  const [autoSync, setAutoSync] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [, tick] = useState(0);
   const cursor = useRef<string | null>(null);
   const skew = useRef(0);
@@ -144,9 +142,6 @@ export default function RoomClient({ code, player, episodes }: { code: string; p
   }, [data, player.anilistId, player.episode, router]);
 
   useEffect(() => {
-    try {
-      setAutoSync(localStorage.getItem("ak_room_autosync") === "1");
-    } catch {}
     const t = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, []);
@@ -208,7 +203,7 @@ export default function RoomClient({ code, player, episodes }: { code: string; p
       const l = localNow();
       if (!l) return;
       const since = Date.now() - lastShared.current.at;
-      if (since < 5000 && l.playing === lastShared.current.playing) return;
+      if (since < SHARE_EVERY && l.playing === lastShared.current.playing) return;
       lastShared.current = { at: Date.now(), playing: l.playing };
       fetch(`/api/rooms/${code}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "state", position: l.pos, playing: l.playing }) }).catch(() => {});
     }, 1000);
@@ -220,18 +215,21 @@ export default function RoomClient({ code, player, episodes }: { code: string; p
     lastSync.current = Date.now();
     setResumeAt(Math.max(0, Math.floor(target + 2)));
     setSyncKey(String(Date.now()));
+    setSyncing(true);
+    setTimeout(() => setSyncing(false), 2500);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   const l = localNow();
   const host = hostNow();
   const drift = l ? host - l.pos : null;
-  const off = !isHost && data && !data.room.hostAway && drift !== null && Math.abs(drift) > DRIFT_SHOW;
-
+  // Always on, no options: follow the host whenever we drift. Only while the host is playing
+  // (we can't pause someone's player, so a paused host doesn't drag everyone back), and only
+  // while our player reports its time (if it can't autoplay, we don't reload it in a loop).
   useEffect(() => {
-    if (!autoSync || isHost || drift === null || Math.abs(drift) < DRIFT_AUTO || Date.now() - lastSync.current < 25_000) return;
+    if (isHost || !data || data.room.hostAway || !data.room.playing || drift === null || Math.abs(drift) < DRIFT || Date.now() - lastSync.current < SYNC_GAP) return;
     sync();
-  }, [autoSync, isHost, drift, sync]);
+  }, [isHost, data, drift, sync]);
 
   if (closed) {
     return (
@@ -291,39 +289,16 @@ export default function RoomClient({ code, player, episodes }: { code: string; p
         <div className="min-w-0">
           <PlayerSlot {...player} resumeAt={resumeAt} syncKey={syncKey} />
 
-          {/* Sync / host status */}
-          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-xs">
+          {/* Sync status: a small icon, nothing to manage. */}
+          <div className="mt-2 flex items-center gap-1.5 px-1 text-[11px] text-muted" aria-live="polite">
             {isHost ? (
-              <span className="flex items-center gap-1.5 text-amber-200">
-                <Crown className="h-3.5 w-3.5" /> You&apos;re the host — everyone follows your episode and can sync to your time.
-              </span>
-            ) : room?.hostAway ? (
-              <span className="text-muted">The host is away. You can keep watching; sync will come back when they return.</span>
-            ) : (
-              <span className="text-muted">
-                Host is {room?.playing ? "at" : "paused at"} <span className="font-mono text-fg">{clock(host)}</span>
-                {drift !== null && <> · you&apos;re {Math.abs(drift) < 3 ? "in sync" : <span className={off ? "text-amber-200" : ""}>{Math.round(Math.abs(drift))}s {drift > 0 ? "behind" : "ahead"}</span>}</>}
-              </span>
-            )}
-            {!isHost && (
               <>
-                <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-muted">
-                  <input
-                    type="checkbox"
-                    checked={autoSync}
-                    onChange={(e) => {
-                      setAutoSync(e.target.checked);
-                      try {
-                        localStorage.setItem("ak_room_autosync", e.target.checked ? "1" : "0");
-                      } catch {}
-                    }}
-                    className="accent-[var(--accent)]"
-                  />
-                  Auto-sync
-                </label>
-                <button onClick={sync} disabled={!room || room.hostAway} className={`btn !px-3 !py-1 !text-xs ${off ? "btn-primary" : "btn-ghost"}`}>
-                  <RefreshCw className="h-3.5 w-3.5" /> Sync to host
-                </button>
+                <Crown className="h-3.5 w-3.5 text-amber-300" /> Hosting
+              </>
+            ) : (
+              <>
+                <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin text-accent" : room && !room.hostAway ? "text-success" : ""}`} />
+                {syncing ? "Syncing" : room?.hostAway ? "Host away" : "Synced"}
               </>
             )}
           </div>

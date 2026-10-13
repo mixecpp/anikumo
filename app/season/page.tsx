@@ -11,7 +11,17 @@ import ErrorNotice from "@/components/ErrorNotice";
 import SeasonChart from "@/components/season/SeasonChart";
 import PollCard from "@/components/season/PollCard";
 
-export const metadata: Metadata = pageMeta({ title: "Seasonal anime chart", description: "Every anime airing this season with air dates, studios and scores, plus next season's premieres.", path: "/season" });
+/** Names the current season ("Fall 2026 Anime") — that's what people search for. */
+export function generateMetadata(): Metadata {
+  const { season, year } = currentSeason();
+  const name = `${season.charAt(0)}${season.slice(1).toLowerCase()} ${year}`;
+  return pageMeta({
+    title: `${name} Anime: Seasonal Anime Chart`,
+    description: `Every ${name} anime with air dates, studios and scores, plus next season's premieres. Watch new episodes online free with no ads on AniKumo.`,
+    path: "/season",
+    keywords: [`${name.toLowerCase()} anime`, "seasonal anime", "seasonal anime chart", "new anime this season", "airing anime", "currently airing anime"],
+  });
+}
 
 type SP = Record<string, string | undefined>;
 

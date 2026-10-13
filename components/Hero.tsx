@@ -65,7 +65,7 @@ export default function Hero({ items }: { items: HeroItem[] }) {
           >
             <div className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted">Trending · {i + 1}</div>
             {/* Long titles stop at two lines (three on desktop) with "…" instead of pushing the banner out of shape. */}
-            <h1 title={cur.title} className="line-clamp-2 break-words text-3xl font-semibold leading-[1.08] tracking-tight sm:text-4xl md:line-clamp-3 md:text-6xl">{cur.title}</h1>
+            <h2 title={cur.title} className="line-clamp-2 break-words text-3xl font-semibold leading-[1.08] tracking-tight sm:text-4xl md:line-clamp-3 md:text-6xl">{cur.title}</h2>
             <div className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-fg/70">
               {cur.score && (
                 <span className="flex items-center gap-1 text-fg">

@@ -32,6 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${username}'s anime list`,
     description: (visible && u?.bio ? u.bio : `${username}'s anime profile on AniKumo: watchlist, favourites, reviews and stats.`).slice(0, 160),
     path: `/u/${username}`,
+    ownImage: true,
     type: "profile",
     noindex: !visible || !u?.searchable,
   });

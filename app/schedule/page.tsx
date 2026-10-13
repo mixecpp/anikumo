@@ -6,7 +6,7 @@ import { getSchedule, titleOf } from "@/lib/anilist";
 import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-export const metadata: Metadata = pageMeta({ title: "Anime airing schedule", description: "When new episodes air this week, in your time zone, with countdowns for every show.", path: "/schedule" });
+export const metadata: Metadata = pageMeta({ title: "Anime Airing Schedule: New Episodes This Week", description: "When every new anime episode airs this week, in your time zone, with countdowns. Watch new episodes free with no ads on AniKumo.", path: "/schedule", keywords: ["anime schedule", "anime airing schedule", "new anime episodes", "anime release dates", "anime this week"] });
 export const dynamic = "force-dynamic";
 
 export default async function SchedulePage() {

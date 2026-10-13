@@ -23,19 +23,20 @@ import { getUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { translator } from "@/lib/i18n";
 import { appUrl } from "@/lib/url";
+import { SITE_DESCRIPTION, SITE_KEYWORDS } from "@/lib/seo";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl("/")),
-  title: { default: "AniKumo", template: "%s · AniKumo" },
-  description: "Discover, track and watch anime. Seasonal charts, schedules, lists, stats and more.",
+  title: { default: "AniKumo: Watch Anime Online Free, No Ads", template: "%s · AniKumo" },
+  description: SITE_DESCRIPTION,
   applicationName: "AniKumo",
-  openGraph: { type: "website", siteName: "AniKumo" },
+  openGraph: { type: "website", siteName: "AniKumo", locale: "en_US" },
   twitter: { card: "summary_large_image" },
   appleWebApp: { capable: true, title: "AniKumo", statusBarStyle: "black-translucent" },
-  keywords: ["anime", "watch anime", "anime tracker", "anime list", "seasonal anime", "anime schedule", "anime reviews"],
+  keywords: SITE_KEYWORDS,
   category: "entertainment",
   robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
   // Set in the server env to verify ownership in Google Search Console / Bing Webmaster Tools.

@@ -10,7 +10,7 @@ import { Avatar } from "@/components/UserMenu";
 import RoleIcon from "@/components/RoleIcon";
 import { CreateRoom, JoinByCode } from "@/components/rooms/Lobby";
 
-export const metadata: Metadata = pageMeta({ title: "Watch together", description: "Watch anime with friends in sync, with a chat on the side. Join a public room or make a private one.", path: "/watch-together" });
+export const metadata: Metadata = pageMeta({ title: "Watch Anime Together: Free Anime Watch Party", description: "Watch anime with friends in sync, with a chat on the side. Join a public watch party or start a private room with a code. Free, no ads.", path: "/watch-together", keywords: ["watch anime together", "anime watch party", "watch anime with friends", "anime watch together online"] });
 export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<{ anime?: string; ep?: string }> };

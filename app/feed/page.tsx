@@ -11,7 +11,7 @@ import RoleIcon from "@/components/RoleIcon";
 import { Avatar } from "@/components/UserMenu";
 import { SocialCard } from "@/components/Socials";
 
-export const metadata: Metadata = pageMeta({ title: "Feed", description: "Posts and anime recommendations from the AniKumo community.", path: "/feed" });
+export const metadata: Metadata = pageMeta({ title: "Anime Community: Recommendations & Posts", description: "What the AniKumo community is watching and recommending right now. Find your next anime from real fans.", path: "/feed", keywords: ["anime recommendations", "anime community", "what anime to watch"] });
 
 type Props = { searchParams: Promise<{ tab?: string; show?: string }> };
 

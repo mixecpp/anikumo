@@ -12,7 +12,7 @@ import { STATUS_DOT, STATUS_LABEL } from "@/lib/list-shared";
 import ErrorNotice from "@/components/ErrorNotice";
 import ChartFilters from "@/components/charts/ChartFilters";
 
-export const metadata: Metadata = pageMeta({ title: "Top 100 anime of all time", description: "The highest rated anime of all time, by genre and by year, plus underrated hidden gems.", path: "/charts" });
+export const metadata: Metadata = pageMeta({ title: "Top 100 Anime of All Time: Best Rated Anime", description: "The highest rated anime of all time, by genre and by year, plus underrated hidden gems. Watch them online free with no ads on AniKumo.", path: "/charts", keywords: ["best anime", "top anime", "top 100 anime", "highest rated anime", "best anime of all time", "anime to watch"] });
 
 type SP = Record<string, string | undefined>;
 

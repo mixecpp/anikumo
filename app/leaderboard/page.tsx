@@ -10,7 +10,7 @@ import { formatDuration } from "@/lib/watchtime";
 import { Avatar } from "@/components/UserMenu";
 import RoleIcon from "@/components/RoleIcon";
 
-export const metadata: Metadata = pageMeta({ title: "Leaderboard", description: "Who's watched the most anime on AniKumo, measured by real, active watch time.", path: "/leaderboard" });
+export const metadata: Metadata = pageMeta({ title: "Anime Watch Time Leaderboard", description: "Who's watched the most anime on AniKumo, measured by real, active watch time.", path: "/leaderboard" });
 export const dynamic = "force-dynamic";
 
 const PERIODS: [LeaderPeriod, string][] = [

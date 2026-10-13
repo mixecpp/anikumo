@@ -30,6 +30,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // No floating Next.js badge, even in dev.
   devIndicators: false,
+  // Production: a quiet console. Our own log/info/warn/debug calls are stripped; real errors stay.
+  // (Messages from inside the embedded video player come from that site and can't be removed.)
+  compiler: isProd ? { removeConsole: { exclude: ["error"] } } : {},
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

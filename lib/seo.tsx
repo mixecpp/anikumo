@@ -3,7 +3,13 @@ import { stripHtml } from "./anilist";
 import { appUrl } from "./url";
 
 export const SITE_NAME = "AniKumo";
-export const SITE_DESCRIPTION = "Discover, track and watch anime. Seasonal charts, airing schedules, watchlists, reviews and stats — free, no email needed.";
+export const SITE_DESCRIPTION = "Watch anime online free with no ads on AniKumo. Stream sub and dub episodes, follow the seasonal schedule, track your list and watch together with friends.";
+/** The phrases the site as a whole should be found for. Pages add their own on top. */
+export const SITE_KEYWORDS = [
+  "anime", "watch anime", "watch anime online", "anime online free", "free anime", "anime streaming", "stream anime",
+  "anime site", "anime website", "ad free anime", "anime no ads", "anime sub", "anime dub", "english dubbed anime",
+  "subbed anime", "new anime episodes", "seasonal anime", "anime schedule", "anime tracker", "anime list", "watch anime together",
+];
 
 /** Plain-text summary for meta descriptions: no HTML, AniList spoiler/markdown marks, or mid-word cuts. */
 export function excerpt(text: string | null | undefined, max = 160) {
@@ -22,23 +28,30 @@ type PageMeta = {
   title: string;
   description: string;
   path: string;
-  /** Omit on routes with an opengraph-image file — that one wins anyway. */
+  /** A specific preview image. Without one, pages use the site-wide image (app/opengraph-image.tsx). */
   image?: string;
+  /** The route has its own opengraph-image file (anime, profiles): leave the image to it. */
+  ownImage?: boolean;
   type?: "website" | "article" | "profile" | "video.tv_show" | "video.movie";
   noindex?: boolean;
   keywords?: string[];
 };
 
 /** Consistent title/description/canonical/Open Graph/Twitter metadata for a public page. */
-export function pageMeta({ title, description, path, image, type = "website", noindex, keywords }: PageMeta): Metadata {
-  const images = image ? [{ url: image }] : undefined;
+/** The site-wide link preview (app/opengraph-image.tsx). */
+export const SITE_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: "AniKumo — watch anime online, free and with no ads" };
+
+export function pageMeta({ title, description, path, image, ownImage, type = "website", noindex, keywords }: PageMeta): Metadata {
+  // Only set images when there is one: even an empty "images" key would hide the page's
+  // opengraph-image file (or the site-wide one inherited from app/opengraph-image.tsx).
+  const images = image ? { images: [{ url: image }] } : ownImage ? {} : { images: [SITE_IMAGE] };
   return {
     title,
     description,
     keywords,
     alternates: { canonical: path },
-    openGraph: { title, description, url: path, siteName: SITE_NAME, type, images },
-    twitter: { card: image ? "summary" : "summary_large_image", title, description, images },
+    openGraph: { title, description, url: path, siteName: SITE_NAME, type, locale: "en_US", ...images },
+    twitter: { card: image ? "summary" : "summary_large_image", title, description, ...images },
     ...(noindex ? { robots: { index: false, follow: true } } : {}),
   };
 }

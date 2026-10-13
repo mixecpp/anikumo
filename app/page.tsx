@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Hero, { type HeroItem } from "@/components/Hero";
-import { JsonLd, SITE_DESCRIPTION, SITE_NAME } from "@/lib/seo";
+import { JsonLd, SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME } from "@/lib/seo";
 import { appUrl } from "@/lib/url";
 import ContinueWatching from "@/components/ContinueWatching";
 import ErrorNotice from "@/components/ErrorNotice";
@@ -19,6 +19,7 @@ import { pickTitle } from "@/lib/prefs-shared";
 import FadeRow from "@/components/FadeRow";
 import TelegramCard, { TELEGRAM_URL, TIKTOK_URL } from "@/components/TelegramCard";
 import CommunityFeed from "@/components/CommunityFeed";
+import HomeAbout from "@/components/HomeAbout";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +31,12 @@ async function airingToday(lang: Parameters<typeof pickTitle>[1]): Promise<Airin
 }
 
 export const metadata: Metadata = {
-  title: { absolute: "AniKumo — Discover, track and watch anime" },
+  title: { absolute: "AniKumo: Watch Anime Online Free, No Ads (Sub & Dub)" },
   description: SITE_DESCRIPTION,
+  keywords: SITE_KEYWORDS,
   alternates: { canonical: "/" },
+  openGraph: { title: "AniKumo: Watch Anime Online Free, No Ads", description: SITE_DESCRIPTION, url: "/", siteName: SITE_NAME, type: "website" },
+  twitter: { card: "summary_large_image", title: "AniKumo: Watch Anime Online Free, No Ads", description: SITE_DESCRIPTION },
 };
 
 /** Lets Google show a search box for the site and associate the logo with it. */
@@ -41,6 +45,9 @@ const SITE_JSON_LD = [
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: SITE_NAME,
+    alternateName: ["AniKumo Anime", "anikumo.cc"],
+    description: SITE_DESCRIPTION,
+    inLanguage: "en",
     url: appUrl("/"),
     potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: appUrl("/browse?q={search_term_string}") }, "query-input": "required name=search_term_string" },
   },
@@ -118,6 +125,8 @@ export default async function Home() {
             <RankedList title={t("home.popular")} items={noEcchi(data.popular.media)} href="/browse?sort=popularity" />
           </div>
         </FadeRow>
+
+        <HomeAbout />
       </div>
     </div>
   );

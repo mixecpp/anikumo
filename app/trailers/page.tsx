@@ -7,7 +7,7 @@ import { getUi } from "@/lib/server-i18n";
 import ErrorNotice from "@/components/ErrorNotice";
 import TrailerWall from "@/components/TrailerWall";
 
-export const metadata: Metadata = pageMeta({ title: "New anime trailers", description: "Official trailers and PVs for this season's anime and next season's premieres.", path: "/trailers" });
+export const metadata: Metadata = pageMeta({ title: "New Anime Trailers & PVs", description: "Official trailers and PVs for this season's anime and next season's premieres, all in one place.", path: "/trailers", keywords: ["anime trailers", "new anime trailers", "anime pv", "upcoming anime"] });
 
 type SP = Record<string, string | undefined>;
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();

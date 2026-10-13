@@ -42,13 +42,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const name = titleOf(m);
   const kind = m.format === "MOVIE" ? "movie" : "anime";
   const facts = [prettyEnum(m.format), m.seasonYear, m.episodes ? `${m.episodes} episodes` : null, m.studios.nodes[0]?.name].filter(Boolean).join(" · ");
-  const synopsis = excerpt(m.description, 150 - facts.length);
+  // "Watch X online free" is how people search for a show; the page is the landing for it
+  // (episode pages themselves stay out of search results).
+  const lead = `Watch ${name} online free with no ads on AniKumo${m.format === "MOVIE" ? "" : ", sub and dub"}.`;
+  const synopsis = excerpt(m.description, Math.max(60, 300 - lead.length - facts.length));
+  const alt = [m.title.english, m.title.romaji].filter((t): t is string => !!t && t !== name);
   return pageMeta({
-    title: m.seasonYear ? `${name} (${m.seasonYear})` : name,
-    description: `${facts}. ${synopsis || `Episodes, characters, reviews and where to watch ${name}.`}`.slice(0, 200),
+    title: `Watch ${name} Online Free${m.seasonYear ? ` (${m.seasonYear})` : ""}`,
+    description: `${lead} ${facts}. ${synopsis}`.trim(),
     path: `/anime/${id}`,
+    ownImage: true,
     type: kind === "movie" ? "video.movie" : "video.tv_show",
-    keywords: [name, m.title.romaji, m.title.english, ...m.genres, `${name} ${kind}`, `${name} episodes`].filter((k): k is string => !!k),
+    keywords: [
+      name,
+      ...alt,
+      `watch ${name}`,
+      `${name} online`,
+      `${name} free`,
+      `${name} episodes`,
+      kind === "movie" ? `${name} movie` : `${name} sub`,
+      ...(kind === "movie" ? [] : [`${name} dub`, `${name} english dub`]),
+      ...m.genres.map((g) => `${g.toLowerCase()} anime`),
+    ],
   });
 }
 

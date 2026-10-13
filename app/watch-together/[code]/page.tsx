@@ -60,7 +60,7 @@ export default async function RoomPage({ params }: Props) {
         embedsEnabled: sourceSetup().embeds,
         source,
         // In a room the start time comes from the host, so "resume" is always on.
-        initialSettings: { ...settings, resume: true },
+        initialSettings: { ...settings, resume: true, autoplay: true },
       }}
     />
   );
