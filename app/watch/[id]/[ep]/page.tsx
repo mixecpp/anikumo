@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { Star } from "lucide-react";
+import { Popcorn, Star } from "lucide-react";
 import { getMedia, prettyEnum, stripHtml, titleOf } from "@/lib/anilist";
 import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -12,7 +12,6 @@ import Row from "@/components/Row";
 import SetAmbient from "@/components/SetAmbient";
 import EpisodePanel from "@/components/watch/EpisodePanel";
 import EpisodeList from "@/components/watch/EpisodeList";
-import Reactions from "@/components/watch/Reactions";
 import RewatchTracker from "@/components/watch/RewatchTracker";
 import { getUi } from "@/lib/server-i18n";
 import { sourceSetup } from "@/lib/providers";
@@ -91,6 +90,9 @@ export default async function WatchPage({ params }: Props) {
             ))}
           </div>
         </div>
+        <Link href={`/watch-together?anime=${id}&ep=${ep}`} className="btn btn-ghost ml-auto shrink-0 !px-3 !py-1.5 !text-xs" title="Watch this episode with friends">
+          <Popcorn className="h-4 w-4" /> <span className="hidden sm:inline">Watch together</span>
+        </Link>
       </header>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
@@ -130,7 +132,6 @@ export default async function WatchPage({ params }: Props) {
               <Row title="Recommended" items={recs} />
             </div>
           )}
-          <Reactions anilistId={id} episode={ep} />
           <RewatchTracker anilistId={id} active={rewatching} />
           <InlineComments anilistId={id} episode={ep} loggedIn={!!userId} />
         </div>

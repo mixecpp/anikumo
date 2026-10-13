@@ -24,7 +24,8 @@ export async function POST(req: Request) {
   if (problem) return fail(problem, problem.includes("taken") ? 409 : 400);
 
   const user = await prisma.user.create({
-    data: { username, passwordHash: await bcrypt.hash(password, 12), avatarColor: COLORS[Math.floor(Math.random() * COLORS.length)] },
+    // Profiles start public (people can switch to followers-only or private in Settings).
+    data: { username, passwordHash: await bcrypt.hash(password, 12), avatarColor: COLORS[Math.floor(Math.random() * COLORS.length)], profileVisibility: "everyone", profilePublic: true },
   });
   const recoveryKey = await issueRecoveryKey(user.id);
   await createSession(user.id);

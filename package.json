@@ -16,7 +16,8 @@
     "db:backup": "node scripts/db-backup.mjs",
     "db:postgres": "node scripts/use-postgres.mjs postgres",
     "db:sqlite": "node scripts/use-postgres.mjs sqlite",
-    "test:community": "node --test tests/community.e2e.mjs"
+    "test:community": "node --test tests/community.e2e.mjs",
+    "test:rooms": "node --test tests/rooms.e2e.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

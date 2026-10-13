@@ -37,7 +37,7 @@ function loadScript() {
  * isn't sure. `action` names the form so the server can check the token came from it.
  * Tokens are single-use, so bump `nonce` after every submit to get a fresh one.
  */
-export default function Turnstile({ siteKey, action, onToken, nonce = 0 }: { siteKey: string; action: "login" | "register" | "forgot"; onToken: (token: string | null) => void; nonce?: number }) {
+export default function Turnstile({ siteKey, action, onToken, nonce = 0 }: { siteKey: string; action: "login" | "register" | "forgot" | "room"; onToken: (token: string | null) => void; nonce?: number }) {
   const el = useRef<HTMLDivElement>(null);
   const id = useRef<string | null>(null);
   const cb = useRef(onToken);

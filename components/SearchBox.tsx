@@ -205,7 +205,7 @@ export default function SearchBox() {
               <X className="h-4 w-4" />
             </button>
           ) : (
-            <kbd className="hidden rounded border border-white/10 px-1.5 text-[10px] leading-4 text-muted sm:block">/</kbd>
+            <kbd className="keyboard-only hidden rounded border border-white/10 px-1.5 text-[10px] leading-4 text-muted sm:block">/</kbd>
           )}
         </span>
       </form>

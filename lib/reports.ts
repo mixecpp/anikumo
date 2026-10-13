@@ -1,7 +1,7 @@
 import { prisma } from "./db";
 
 /** Everything that can be reported, so reports and the moderation queue treat them all alike. */
-export const REPORTABLE = ["comment", "review", "post", "post_comment", "profile_comment"] as const;
+export const REPORTABLE = ["comment", "review", "post", "post_comment", "profile_comment", "room_message"] as const;
 export type ReportableType = (typeof REPORTABLE)[number];
 
 export function isReportable(t: unknown): t is ReportableType {
@@ -31,6 +31,10 @@ export async function findContent(type: ReportableType, id: string): Promise<Rep
       const c = await prisma.postComment.findUnique({ where: { id }, include: { user: AUTHOR, post: { include: { user: AUTHOR } } } });
       return c && { userId: c.userId, author: c.user.username, body: c.body, href: `/post/${c.postId}` };
     }
+    case "room_message": {
+      const m = await prisma.watchRoomMessage.findUnique({ where: { id }, include: { user: AUTHOR, room: { select: { code: true } } } });
+      return m && { userId: m.userId, author: m.user.username, body: m.body, href: `/watch-together/${m.room.code}` };
+    }
     case "profile_comment": {
       const c = await prisma.profileComment.findUnique({ where: { id }, include: { user: AUTHOR, profile: AUTHOR } });
       return c && { userId: c.userId, author: c.user.username, body: c.body, href: `/u/${c.profile.username}#wall-${c.id}` };
@@ -44,10 +48,11 @@ export async function removeContent(type: ReportableType, id: string) {
   else if (type === "review") await prisma.review.deleteMany({ where: { id } });
   else if (type === "post") await prisma.post.deleteMany({ where: { id } });
   else if (type === "post_comment") await prisma.postComment.deleteMany({ where: { id } });
+  else if (type === "room_message") await prisma.watchRoomMessage.deleteMany({ where: { id } });
   else await prisma.profileComment.deleteMany({ where: { id } });
 }
 
-const LABEL: Record<ReportableType, string> = { comment: "comment", review: "review", post: "post", post_comment: "reply", profile_comment: "profile comment" };
+const LABEL: Record<ReportableType, string> = { comment: "comment", review: "review", post: "post", post_comment: "reply", profile_comment: "profile comment", room_message: "Watch Together message" };
 const REASON: Record<string, string> = { spoiler: "an unmarked spoiler", harassment: "harassment", spam: "spam", offensive: "offensive content" };
 
 /** Removes content as a moderator and tells the author what was removed and why. */

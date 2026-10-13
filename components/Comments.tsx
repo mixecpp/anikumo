@@ -54,7 +54,7 @@ function Composer({ onSubmit, placeholder, autoFocus, initial = "", onCancel, co
       />
       {expanded && (
         <div className="flex items-center justify-between border-t border-white/[0.06] px-3 py-2">
-          <span className="font-mono text-[11px] text-muted">||spoiler|| · Ctrl+Enter</span>
+          <span className="font-mono text-[11px] text-muted">||spoiler||<span className="keyboard-only"> · Ctrl+Enter</span></span>
           <div className="flex gap-1.5">
             {onCancel && (
               <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onCancel} className="btn btn-ghost !px-3 !py-1.5 !text-xs">Cancel</button>
@@ -69,7 +69,11 @@ function Composer({ onSubmit, placeholder, autoFocus, initial = "", onCancel, co
   );
 }
 
-export default function Comments({ anilistId, episode, loggedIn, hideHeading = false }: { anilistId: number; episode?: number; loggedIn: boolean; hideHeading?: boolean }) {
+/**
+ * `docked`: for the phone sheet — the list scrolls and the comment box stays pinned at the
+ * bottom (like YouTube), so it sits just above the keyboard while you type.
+ */
+export default function Comments({ anilistId, episode, loggedIn, hideHeading = false, docked = false }: { anilistId: number; episode?: number; loggedIn: boolean; hideHeading?: boolean; docked?: boolean }) {
   const [comments, setComments] = useState<C[] | null>(null);
   const [me, setMe] = useState<string | null>(null);
   const [staff, setStaff] = useState(false);
@@ -192,8 +196,17 @@ export default function Comments({ anilistId, episode, loggedIn, hideHeading = f
     );
   }
 
+  const composer = loggedIn ? (
+    <Composer placeholder={episode ? "Thoughts on this episode? Wrap spoilers in ||double bars||." : "Add to the discussion…"} onSubmit={(b) => post(b)} />
+  ) : (
+    <p className="text-sm text-muted">
+      <Link href="/login" className="text-fg underline-offset-4 hover:underline">Log in</Link> to join the discussion.
+    </p>
+  );
+
   return (
-    <section>
+    <section className={docked ? "flex h-full min-h-0 flex-col" : ""}>
+      <div className={docked ? "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-4" : ""}>
       <div className="flex items-start justify-between gap-3">
         {hideHeading ? <div className="flex-1" /> : <SectionHeading title={episode ? `Episode ${episode} discussion` : "Discussion"} count={total} className="flex-1" />}
         <div className="flex rounded-lg bg-white/[0.05] p-0.5 text-xs">
@@ -205,15 +218,7 @@ export default function Comments({ anilistId, episode, loggedIn, hideHeading = f
         </div>
       </div>
 
-      {loggedIn ? (
-        <div className="mb-8">
-          <Composer placeholder={episode ? "Thoughts on this episode? Wrap spoilers in ||double bars||." : "Add to the discussion…"} onSubmit={(b) => post(b)} />
-        </div>
-      ) : (
-        <p className="mb-8 text-sm text-muted">
-          <Link href="/login" className="text-fg underline-offset-4 hover:underline">Log in</Link> to join the discussion.
-        </p>
-      )}
+      {docked ? <div className="mb-5" /> : <div className="mb-8">{composer}</div>}
 
       {comments === null ? (
         <div className="space-y-5">
@@ -246,6 +251,8 @@ export default function Comments({ anilistId, episode, loggedIn, hideHeading = f
           </AnimatePresence>
         </ul>
       )}
+      </div>
+      {docked && <div className="shrink-0 border-t border-white/[0.06] bg-bg px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3">{composer}</div>}
     </section>
   );
 }

@@ -9,14 +9,15 @@ import { usePlayer, type WatchProps } from "./context";
  * (see PlayerProvider) so it can keep playing when you leave; this just reserves its space
  * and tells it which episode to play.
  */
-export default function PlayerSlot({ href, image, ...props }: WatchProps & { href: string; image: string }) {
+export default function PlayerSlot({ href, image, syncKey, ...props }: WatchProps & { href: string; image: string; syncKey?: string }) {
   const { open, attach, height, popped, setPopped } = usePlayer();
   const ref = useRef<HTMLDivElement>(null);
 
   // Rebuild the session only when the episode (or viewer) changes, not on every render.
-  const key = `${props.userId}:${props.anilistId}:${props.episode}`;
-  const latest = useRef({ props, href, title: props.title, image });
-  latest.current = { props, href, title: props.title, image };
+  // syncKey lets Watch Together reload the player at a new start time.
+  const key = `${props.userId}:${props.anilistId}:${props.episode}:${syncKey ?? ""}`;
+  const latest = useRef({ props, href, title: props.title, image, remountKey: syncKey });
+  latest.current = { props, href, title: props.title, image, remountKey: syncKey };
   useEffect(() => {
     open(latest.current);
   }, [key, open]);

@@ -6,12 +6,12 @@
  *    (fail closed) rather than silently letting bots through.
  *  - TURNSTILE_HOSTNAMES: comma-separated sites the token must have been issued on
  *    (e.g. "anikumo.cc,www.anikumo.cc"). Defaults to APP_URL's host in production.
- *  - Each form has its own action ("login", "register", "forgot"); a token from one form can't
+ *  - Each form has its own action ("login", "register", "forgot", "room"); a token from one form can't
  *    be replayed on another. Tokens are single-use and Cloudflare rejects a second redeem.
  *  - In development .env.development uses Cloudflare's always-pass test keys, which don't
  *    report a real hostname or action, so those two checks are skipped for test keys only.
  */
-export type CaptchaAction = "login" | "register" | "forgot";
+export type CaptchaAction = "login" | "register" | "forgot" | "room";
 
 const secretKey = () => (process.env.TURNSTILE_SECRET_KEY || process.env.TURNSTILE_SECRET || "").trim();
 

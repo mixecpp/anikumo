@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fail, readJson, requireUserId } from "@/lib/http";
+import { fail, readJson, requireUserId, tooFast } from "@/lib/http";
 
 const METRICS = ["episodes", "shows", "hours"] as const;
 const PERIODS = ["week", "month"] as const;
@@ -9,6 +9,10 @@ const PERIODS = ["week", "month"] as const;
 export async function POST(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Not logged in", 401);
+
+  const slow = tooFast(`goals:${userId}`, 30);
+
+  if (slow) return slow;
   const b = await readJson<{ metric: string; period: string; target: number }>(req);
   const metric = METRICS.find((m) => m === b.metric);
   const period = PERIODS.find((p) => p === b.period);

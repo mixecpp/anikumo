@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fail, readJson, requireUserId, toInt } from "@/lib/http";
+import { fail, readJson, requireUserId, toInt, tooFast } from "@/lib/http";
 
 /** POST { pollId, anilistId } casts or changes your vote. */
 export async function POST(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Log in to vote", 401);
+
+  const slow = tooFast(`polls:${userId}`, 30);
+
+  if (slow) return slow;
   const b = await readJson<{ pollId: string; anilistId: number }>(req);
   const anilistId = toInt(b.anilistId);
   const poll = await prisma.poll.findUnique({ where: { id: String(b.pollId ?? "") } });

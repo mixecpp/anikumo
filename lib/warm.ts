@@ -1,5 +1,6 @@
 import { warm } from "./cache";
 import { installCacheStore, pruneCache } from "./cache-store";
+import { pruneTraffic } from "./traffic";
 import { browse, currentSeason, getHomeData, getMedia, getSchedule, getSeason, getTagCollection, getTopChart, shiftSeason } from "./anilist";
 import { parseBrowseParams } from "./browse-params";
 
@@ -72,6 +73,7 @@ async function warmOnce() {
   } catch {}
 
   await pruneCache();
+  await pruneTraffic();
   if (process.env.NODE_ENV !== "production") console.log(`[warm] refreshed ${ok} AniList queries in ${Math.round((Date.now() - started) / 1000)}s`);
 }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fail, readJson, requireUserId, toInt } from "@/lib/http";
+import { fail, readJson, requireUserId, toInt, tooFast } from "@/lib/http";
 import { getEntryDTO, getList, toDTO, upsertEntry, validatePatch, watchedUpTo } from "@/lib/list";
 import { isStatus } from "@/lib/list-shared";
 
@@ -17,6 +17,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Log in to use your list", 401);
+
+  const slow = tooFast(`list:${userId}`, 120);
+
+  if (slow) return slow;
   const body = await readJson<Record<string, unknown>>(req);
   const anilistId = toInt(body.anilistId);
   if (!anilistId || anilistId < 1) return fail("anilistId required");
@@ -30,6 +34,10 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Not logged in", 401);
+
+  const slow = tooFast(`list:${userId}`, 120);
+
+  if (slow) return slow;
   const anilistId = toInt(new URL(req.url).searchParams.get("anilistId"));
   if (!anilistId) return fail("anilistId required");
   await prisma.listEntry.deleteMany({ where: { userId, anilistId } });
@@ -40,6 +48,10 @@ export async function DELETE(req: Request) {
 export async function PATCH(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Not logged in", 401);
+
+  const slow = tooFast(`list:${userId}`, 120);
+
+  if (slow) return slow;
   const body = await readJson<{ ids: unknown[]; status: string; addTag: string; removeTag: string; remove: boolean }>(req);
   const ids = (Array.isArray(body.ids) ? body.ids : []).map(toInt).filter((n): n is number => !!n && n > 0).slice(0, 500);
   if (!ids.length) return fail("Select at least one show");

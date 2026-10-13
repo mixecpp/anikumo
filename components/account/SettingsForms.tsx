@@ -378,7 +378,9 @@ export default function SettingsForms({ user, prefs }: { user: User; prefs: Pref
 
         <SecurityCard totpEnabled={user.totpEnabled} hasRecoveryKey={user.hasRecoveryKey} />
         <ImportCard />
-        <KeyboardCard shortcuts={prefs.shortcuts} />
+        <div className="keyboard-only">
+          <KeyboardCard shortcuts={prefs.shortcuts} />
+        </div>
 
         <Card id="data" title="Your data" description="Take your history with you, or start over.">
           <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.06]">

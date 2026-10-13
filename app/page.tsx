@@ -17,7 +17,7 @@ import { arrangeContinue, becauseYouWatched, unfinished } from "@/lib/home-perso
 import { getUi } from "@/lib/server-i18n";
 import { pickTitle } from "@/lib/prefs-shared";
 import FadeRow from "@/components/FadeRow";
-import TelegramCard, { TELEGRAM_URL } from "@/components/TelegramCard";
+import TelegramCard, { TELEGRAM_URL, TIKTOK_URL } from "@/components/TelegramCard";
 import CommunityFeed from "@/components/CommunityFeed";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +44,7 @@ const SITE_JSON_LD = [
     url: appUrl("/"),
     potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: appUrl("/browse?q={search_term_string}") }, "query-input": "required name=search_term_string" },
   },
-  { "@context": "https://schema.org", "@type": "Organization", name: SITE_NAME, url: appUrl("/"), logo: appUrl("/pwa-icon"), sameAs: [TELEGRAM_URL] },
+  { "@context": "https://schema.org", "@type": "Organization", name: SITE_NAME, url: appUrl("/"), logo: appUrl("/pwa-icon"), sameAs: [TELEGRAM_URL, TIKTOK_URL] },
 ];
 
 export default async function Home() {

@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { checkUsername, destroySession, getSession, revokeSessions, isOwnerName } from "@/lib/auth";
-import { fail, readJson } from "@/lib/http";
+import { fail, readJson, tooFast } from "@/lib/http";
 import { isDiscordWebhook } from "@/lib/notifications";
 import { encrypt } from "@/lib/crypto";
 import { deleteAvatarFile } from "@/lib/uploads";
@@ -30,6 +30,8 @@ export async function PATCH(req: Request) {
   const session = await getSession();
   if (!session) return fail("Not logged in", 401);
   const userId = session.userId;
+  const slow = tooFast(`account:${userId}`, 30);
+  if (slow) return slow;
   const body = await readJson<Body>(req);
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
   const data: Record<string, unknown> = {};
@@ -48,6 +50,8 @@ export async function PATCH(req: Request) {
     if (username !== user.username) {
       // Owner protection is tied to the name in ADMIN_USERNAMES, so owners keep their name.
       if (isOwnerName(user.username)) return fail("The site owner's username can't be changed", 403);
+      const renames = tooFast(`rename:${userId}`, 3, 24 * 3600_000);
+      if (renames) return fail("You can change your username 3 times a day", 429);
       const problem = await checkUsername(username, { exceptUserId: userId, rename: true });
       if (problem) return fail(problem, problem.includes("taken") ? 409 : 400);
       data.username = username;

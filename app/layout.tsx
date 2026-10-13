@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { Send } from "lucide-react";
-import { TELEGRAM_URL } from "@/components/TelegramCard";
+import { SocialIcons } from "@/components/Socials";
+import PageViews from "@/components/PageViews";
+import TrackerShield from "@/components/TrackerShield";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
@@ -17,7 +18,8 @@ import ServiceWorker from "@/components/ServiceWorker";
 import { PrefsProvider } from "@/components/PrefsProvider";
 import { libraryRoot } from "@/lib/library";
 import { getPrefs } from "@/lib/prefs";
-import { getUser } from "@/lib/auth";
+import { getUser, roleOf } from "@/lib/auth";
+import DevtoolsGuard from "@/components/DevtoolsGuard";
 import { prisma } from "@/lib/db";
 import { translator } from "@/lib/i18n";
 import { appUrl } from "@/lib/url";
@@ -75,31 +77,24 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <main id="main" className="pb-28 lg:pb-16">
                 {children}
               </main>
-              <footer className="mx-auto mb-24 max-w-[1400px] border-t border-line px-4 pt-6 text-xs text-muted md:px-8 lg:mb-10">
-                <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-                  <nav className="flex flex-wrap gap-x-4 gap-y-1.5" aria-label="Footer">
-                    <span className="text-fg/80">AniKumo</span>
-                    <Link href="/season" className="hover:text-fg">{t("nav.season")}</Link>
-                    <Link href="/charts" className="hover:text-fg">{t("nav.charts")}</Link>
+              {/* Pages already in the top bar (Browse, Seasonal, Charts…) aren't repeated here. */}
+              <footer className="mx-auto mb-24 max-w-[1400px] border-t border-line px-4 py-4 text-xs text-muted md:px-8 lg:mb-6">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <span className="font-medium text-fg/80">AniKumo</span>
+                  <nav className="flex flex-wrap items-center gap-x-3.5 gap-y-1" aria-label="Footer">
                     <Link href="/trailers" className="hover:text-fg">Trailers</Link>
                     <Link href="/compare" className="hover:text-fg">Compare</Link>
                     <Link href="/changelog" className="hover:text-fg">What&apos;s new</Link>
                     <Link href="/rules" className="hover:text-fg">Rules</Link>
                     <Link href="/privacy" className="hover:text-fg">Privacy</Link>
-                    <a href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#229ED9]/90 hover:text-[#229ED9]">
-                      <Send className="h-3 w-3" /> Telegram
-                    </a>
-                    <ShortcutsButton />
+                    <span className="hidden lg:contents"><ShortcutsButton /></span>
                   </nav>
-                  <span>
+                  <SocialIcons />
+                  <span className="text-[11px] sm:ml-auto">
                     {t("footer.data")}{" "}
-                    <a className="text-fg/70 hover:text-fg" href="https://anilist.co" target="_blank" rel="noreferrer">
-                      AniList
-                    </a>{" "}
-                    · {t("footer.skip")}{" "}
-                    <a className="text-fg/70 hover:text-fg" href="https://aniskip.com" target="_blank" rel="noreferrer">
-                      AniSkip
-                    </a>
+                    <a className="text-fg/70 hover:text-fg" href="https://anilist.co" target="_blank" rel="noreferrer">AniList</a>
+                    {" · "}{t("footer.skip")}{" "}
+                    <a className="text-fg/70 hover:text-fg" href="https://aniskip.com" target="_blank" rel="noreferrer">AniSkip</a>
                   </span>
                 </div>
               </footer>
@@ -109,6 +104,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 latestChangelog={latest?.createdAt.toISOString() ?? null}
               />
               <ScrollTop />
+              <PageViews />
+              <TrackerShield />
+              <DevtoolsGuard enabled={roleOf(user) === "user"} />
               <Toaster />
               <Shortcuts />
               <CommandPalette />

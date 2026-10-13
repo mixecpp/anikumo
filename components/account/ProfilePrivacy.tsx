@@ -32,13 +32,10 @@ async function patchAccount(body: object) {
 /** Banner, bio, who can see the profile, which parts they see, and discoverability. */
 export function ProfilePrivacyCard({ user }: { user: PrivacyUser }) {
   const router = useRouter();
-  const [bio, setBio] = useState(user.bio);
-  const [banner, setBanner] = useState(user.profileBanner);
   const [visibility, setVisibility] = useState<Visibility>(user.profileVisibility);
   const [sections, setSections] = useState<Sections>(user.profileSections);
   const [flags, setFlags] = useState({ searchable: user.searchable, onLeaderboard: user.onLeaderboard, allowFollows: user.allowFollows });
   const [wall, setWall] = useState<WallSetting>(user.profileComments);
-  const [picking, setPicking] = useState(false);
 
   async function save(body: object, done: string, undo: () => void) {
     if (await patchAccount(body)) {
@@ -53,72 +50,22 @@ export function ProfilePrivacyCard({ user }: { user: PrivacyUser }) {
     <SettingsCard
       id="visibility"
       title="Profile & privacy"
-      description="Choose what your profile looks like and exactly who can see what."
+      description="Choose exactly who can see your profile, what they see and who can comment."
       footer={
-        <>
-          <a href={`/u/${user.username}`} className="font-mono text-[11px] text-muted hover:text-fg">
-            /u/{user.username} ↗
-          </a>
-          <button onClick={() => save({ bio }, "Bio saved", () => {})} disabled={bio === user.bio} className="btn btn-primary">
-            Save bio
-          </button>
-        </>
+        <a href={`/u/${user.username}`} className="font-mono text-[11px] text-muted hover:text-fg">
+          /u/{user.username} ↗
+        </a>
       }
     >
       <div className="space-y-6">
-        {/* Banner */}
-        <div>
-          <span className="mb-1.5 block text-xs font-medium text-muted">Banner</span>
-          <div className="relative aspect-[4/1] overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.03]">
-            {banner ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={banner} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="grid h-full place-items-center text-xs text-muted">
-                <span className="flex items-center gap-1.5">
-                  <ImageIcon className="h-4 w-4" /> No banner yet
-                </span>
-              </div>
-            )}
-            <div className="absolute bottom-2 right-2 flex gap-1.5">
-              {banner && (
-                <button
-                  onClick={() => {
-                    const prev = banner;
-                    setBanner("");
-                    save({ profileBanner: "" }, "Banner removed", () => setBanner(prev));
-                  }}
-                  className="glass-strong rounded-lg px-2.5 py-1 text-xs"
-                >
-                  Remove
-                </button>
-              )}
-              <button onClick={() => setPicking((p) => !p)} className="glass-strong rounded-lg px-2.5 py-1 text-xs">
-                {picking ? "Close" : banner ? "Change" : "Choose a banner"}
-              </button>
-            </div>
-          </div>
-          <AnimatePresence initial={false}>
-            {picking && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                <BannerPicker
-                  current={banner}
-                  onPick={(b) => {
-                    const prev = banner;
-                    setBanner(b.image);
-                    setPicking(false);
-                    save({ profileBanner: b.image }, `Banner set to ${b.title}`, () => setBanner(prev));
-                  }}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        <p className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5 text-xs text-muted">
+          Your banner, picture and bio are edited right on{" "}
+          <a href={`/u/${user.username}`} className="text-fg underline-offset-2 hover:underline">
+            your profile
+          </a>{" "}
+          — tap the pencil at the top.
+        </p>
 
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-medium text-muted">Bio</span>
-          <textarea value={bio} onChange={(e) => setBio(e.target.value.slice(0, 300))} rows={2} placeholder="A line about your taste in anime" className="input resize-none text-sm" />
-        </label>
 
         {/* Who can see it */}
         <div>
@@ -218,7 +165,7 @@ export function ProfilePrivacyCard({ user }: { user: PrivacyUser }) {
   );
 }
 
-function BannerPicker({ current, onPick }: { current: string; onPick: (b: Banner) => void }) {
+export function BannerPicker({ current, onPick }: { current: string; onPick: (b: Banner) => void }) {
   const [q, setQ] = useState("");
   const [items, setItems] = useState<Banner[] | null>(null);
 

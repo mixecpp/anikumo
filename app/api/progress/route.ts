@@ -17,11 +17,24 @@ export async function GET(req: Request) {
   return NextResponse.json({ progress }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
+/**
+ * Progress samples are stamped with the browser's clock. A device whose clock runs ahead (a
+ * laptop set to the wrong time) used to get every save rejected with a 400, and its future
+ * timestamps would also hide newer saves from other devices. Anything more than 30 seconds
+ * ahead of the server is treated as "just now" instead.
+ */
+function fromDeviceClock(body: unknown) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return body;
+  const b = body as Record<string, unknown>;
+  const now = Date.now();
+  return typeof b.sampledAt === "number" && b.sampledAt > now + 30_000 ? { ...b, sampledAt: now } : b;
+}
+
 export async function POST(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Not logged in", 401);
   let input;
-  try { input = parseProgress(await req.json()); } catch (error) { return fail(error instanceof Error ? error.message : "Invalid progress"); }
+  try { input = parseProgress(fromDeviceClock(await req.json())); } catch (error) { return fail(error instanceof Error ? error.message : "Invalid progress"); }
   if (input.expectedUserId && input.expectedUserId !== userId) return fail("Account changed. Reload the watch page.", 409);
   const { anilistId, episode, sampledAt } = input;
   // Removed from history: ignore samples from before the removal (e.g. a save still queued in the browser).
@@ -51,7 +64,9 @@ export async function DELETE(req: Request) {
   // Remember where the history was cut so older samples (in the browser's same clock as
   // sampledAt) can't bring the show back. ?before= is the browser's own Date.now().
   const latest = await prisma.watchProgress.aggregate({ where, _max: { sampledAt: true } });
-  const before = Math.max(Number(sp.get("before")) || 0, latest._max.sampledAt ?? 0);
+  // Never in the future: a device with a fast clock would otherwise block saves from every
+  // other device until its clock time came round.
+  const before = Math.max(Math.min(Number(sp.get("before")) || 0, Date.now()), latest._max.sampledAt ?? 0);
   const [{ count }] = await prisma.$transaction([
     prisma.watchProgress.deleteMany({ where }),
     prisma.watchCursor.deleteMany({ where }),

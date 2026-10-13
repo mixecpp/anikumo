@@ -8,7 +8,8 @@ import { PlayerContext, type PlayerSession } from "./context";
 
 export { usePlayer, type PlayerSession, type WatchProps } from "./context";
 
-const sessionKey = (s: PlayerSession) => `${s.props.userId}:${s.props.anilistId}:${s.props.episode}`;
+// remountKey is part of it so Watch Together can reload the player at the host's time.
+const sessionKey = (s: PlayerSession) => `${s.props.userId}:${s.props.anilistId}:${s.props.episode}:${s.remountKey ?? ""}`;
 const PHONE = "(max-width: 767px)";
 
 function useMedia(query: string) {
@@ -199,7 +200,7 @@ function PlayerHost({
     >
       {/* Only clip when showing the video alone (mini, float, pinned); inline, the control bar's menus must be able to open past it. */}
       <div className={`relative shrink-0 ${clipHeight ? "overflow-hidden" : ""}`} style={{ width: videoWidth, height: clipHeight }}>
-        <WatchClient {...session.props} />
+        <WatchClient key={session.remountKey ?? ""} {...session.props} />
         {/* On a phone the mini player is too small to use the embed's own controls: tap to go back. */}
         {compact && phone && <button onClick={open} className="absolute inset-0" aria-label={`Open ${session.title}`} />}
       </div>

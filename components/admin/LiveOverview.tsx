@@ -150,6 +150,48 @@ export default function LiveOverview({ initial }: { initial: AdminMetrics }) {
         })}
       </section>
 
+      <section className="panel rounded-xl p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-medium">Visitors</h2>
+          <span className="text-[11px] text-muted">Everyone, including people without an account · counts only, no tracking</span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
+          {(
+            [
+              ["Visitors today", m.traffic.today.visitors],
+              ["Guests today", m.traffic.today.guests],
+              ["Page views", m.traffic.today.views],
+              ["Guest page views", m.traffic.today.guestViews],
+              ["On phones", `${m.traffic.today.mobileShare}%`],
+            ] as const
+          ).map(([k, v]) => (
+            <div key={k}>
+              <div className="text-xl font-semibold tabular-nums">{typeof v === "number" ? <Num value={v} /> : v}</div>
+              <div className="text-xs text-muted">{k}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_260px]">
+          <BarChart title="Unique visitors (14 days)" data={m.traffic.series.map((s) => ({ label: s.day, value: s.visitors }))} />
+          <BarChart title="Guests without an account" data={m.traffic.series.map((s) => ({ label: s.day, value: s.guests }))} />
+          <div>
+            <h3 className="mb-2 text-xs font-medium text-muted">Top pages today</h3>
+            {m.traffic.topPages.length === 0 ? (
+              <p className="text-xs text-muted">No visits yet today.</p>
+            ) : (
+              <ol className="space-y-1.5">
+                {m.traffic.topPages.map((p) => (
+                  <li key={p.path} className="flex items-center gap-2 text-xs">
+                    <Link href={p.path} className="min-w-0 flex-1 truncate font-mono text-fg/80 hover:text-fg">{p.path}</Link>
+                    <span className="font-mono tabular-nums text-muted">{p.views}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </div>
+      </section>
+
       <section className="grid gap-4 lg:grid-cols-3">
         <BarChart title="Signups" data={m.series.map((s) => ({ label: s.day, value: s.signups }))} />
         <BarChart title="Watch hours" data={m.series.map((s) => ({ label: s.day, value: s.watchHours }))} format={(v) => (v >= 10 ? Math.round(v).toLocaleString() : v.toFixed(v ? 1 : 0))} />

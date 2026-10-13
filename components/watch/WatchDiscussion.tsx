@@ -97,6 +97,7 @@ export function CommentsPeek({ anilistId, episode, loggedIn }: Props) {
 function CommentsSheet({ open, onClose, count, anilistId, episode, loggedIn }: Props & { open: boolean; onClose: () => void; count: number }) {
   const drag = useDragControls();
   useScrollLock(open);
+  const keyboard = useKeyboardInset(open);
 
   useEffect(() => {
     if (!open) return;
@@ -122,7 +123,8 @@ function CommentsSheet({ open, onClose, count, anilistId, episode, loggedIn }: P
           dragElastic={{ top: 0, bottom: 0.7 }}
           onDragEnd={(_, info) => (info.offset.y > 90 || info.velocity.y > 600) && onClose()}
           // Fills the screen below the pinned 16:9 player.
-          style={{ top: "calc(100vw * 9 / 16 + env(safe-area-inset-top))" }}
+          // Sits above the on-screen keyboard while you type.
+          style={{ top: "calc(100vw * 9 / 16 + env(safe-area-inset-top))", bottom: keyboard }}
           className="fixed inset-x-0 bottom-0 z-[44] flex flex-col border-t border-white/10 bg-bg"
         >
           <div onPointerDown={(e) => drag.start(e)} className="flex shrink-0 cursor-grab touch-none items-center gap-2 border-b border-white/[0.06] px-4 pb-3 pt-2">
@@ -133,13 +135,31 @@ function CommentsSheet({ open, onClose, count, anilistId, episode, loggedIn }: P
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-4">
-            <Comments anilistId={anilistId} episode={episode} loggedIn={loggedIn} hideHeading />
+          <div className="min-h-0 flex-1">
+            <Comments anilistId={anilistId} episode={episode} loggedIn={loggedIn} hideHeading docked />
           </div>
         </motion.section>
       )}
     </AnimatePresence>
   );
+}
+
+/** How much of the screen the on-screen keyboard covers (0 when it's closed). */
+function useKeyboardInset(active: boolean) {
+  const [inset, setInset] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!active || !vv) return setInset(0);
+    const update = () => setInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [active]);
+  return inset;
 }
 
 /** The full discussion further down the page — on phones it lives in the sheet instead. */

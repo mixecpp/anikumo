@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkText } from "@/lib/automod";
 import { prisma } from "@/lib/db";
-import { fail, readJson, requireUserId, toInt } from "@/lib/http";
+import { fail, readJson, requireUserId, toInt, tooFast } from "@/lib/http";
 import { getSnapshots } from "@/lib/media";
 
 /** GET → your custom lists (with whether ?anilistId= is already in each). */
@@ -30,6 +30,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Log in to make lists", 401);
+
+  const slow = tooFast(`lists:${userId}`, 60);
+
+  if (slow) return slow;
   const b = await readJson<Record<string, unknown>>(req);
   const action = b.action;
 

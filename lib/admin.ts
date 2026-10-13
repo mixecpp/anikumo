@@ -5,6 +5,7 @@ import { cached } from "./cache";
 import { getMediaBatch, titleOf } from "./anilist";
 import { localDay } from "./watchtime";
 import { dbFile } from "./uploads";
+import { getTraffic } from "./traffic";
 
 /** Records an admin action for the audit log. Never throws. */
 export async function logAdmin(adminId: string, action: string, target = "", detail = "") {
@@ -40,7 +41,7 @@ export async function getAdminMetrics() {
   const days = dayKeys(DAYS);
   const since = new Date(now - DAYS * 86_400_000);
 
-  const [watchingRows, onlineRows, signupsToday, commentsToday, reviewsToday, todayWatch, users, signups, watchByDay, activeByDay, totals] = await Promise.all([
+  const [watchingRows, onlineRows, signupsToday, commentsToday, reviewsToday, todayWatch, users, signups, watchByDay, activeByDay, totals, traffic] = await Promise.all([
     prisma.watchTime.findMany({ where: { updatedAt: { gte: new Date(now - 90_000) } }, select: { userId: true, anilistId: true, episode: true } }),
     prisma.session.findMany({ where: { revokedAt: null, lastSeenAt: { gte: new Date(now - 10 * 60_000) } }, distinct: ["userId"], select: { userId: true } }),
     prisma.user.count({ where: { createdAt: { gte: startOfDay } } }),
@@ -60,6 +61,7 @@ export async function getAdminMetrics() {
       prisma.errorLog.count({ where: { createdAt: { gte: new Date(now - 86_400_000) } } }),
       prisma.user.count({ where: { bannedAt: { not: null } } }),
     ]),
+    getTraffic(dayKeys(14)),
   ]);
 
   const watchingUsers = new Set(watchingRows.map((r) => r.userId));
@@ -93,6 +95,7 @@ export async function getAdminMetrics() {
     },
     series: days.map((day) => ({ day, signups: signupCount.get(day) ?? 0, watchHours: (watchSeconds.get(day) ?? 0) / 3600, activeViewers: activeCount.get(day) ?? 0 })),
     totals: { users, listEntries, comments, reviews, customLists, openReports, errors24h, banned },
+    traffic,
   };
 }
 

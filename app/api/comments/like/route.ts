@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fail, readJson, requireUserId } from "@/lib/http";
+import { fail, readJson, requireUserId, tooFast } from "@/lib/http";
 
 /** POST { commentId } toggles your like. */
 export async function POST(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Log in to like comments", 401);
+
+  const slow = tooFast(`comment-like:${userId}`, 120);
+
+  if (slow) return slow;
   const { commentId } = await readJson<{ commentId: string }>(req);
   const id = String(commentId ?? "");
   const comment = await prisma.comment.findUnique({ where: { id }, select: { id: true } });

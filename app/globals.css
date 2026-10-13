@@ -461,3 +461,20 @@ html[data-floating-player="phone"] .scroll-top {
     transform: none;
   }
 }
+
+/* Phones: iOS zooms the whole page into any text box under 16px, which knocks sheets and
+   fixed bars out of place. Text boxes are 16px on touch screens; everything else is unchanged. */
+@media (max-width: 767px) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Keyboard hints and shortcut settings mean nothing on a touch screen. */
+@media (hover: none), (max-width: 767px) {
+  .keyboard-only {
+    display: none !important;
+  }
+}

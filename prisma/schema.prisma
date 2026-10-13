@@ -55,6 +55,9 @@ model User {
   postComments     PostComment[]
   wallComments     ProfileComment[]   @relation("WallOwner")
   wallWritten      ProfileComment[]   @relation("WallAuthor")
+  roomsHosted      WatchRoom[]        @relation("RoomHost")
+  roomMemberships  WatchRoomMember[]
+  roomMessages     WatchRoomMessage[]
   modRequestsMade  ModRequest[]       @relation("ModRequestBy")
   modRequestsAbout ModRequest[]       @relation("ModRequestTarget")
   playbackSettings PlaybackSettings?
@@ -574,4 +577,89 @@ model CacheEntry {
   updatedAt DateTime @updatedAt
 
   @@index([expires])
+}
+
+/// Site traffic per day (local server day "YYYY-MM-DD"). Counts only, nothing about who.
+model TrafficDay {
+  day        String @id
+  views      Int    @default(0)
+  guestViews Int    @default(0)
+  mobileViews Int   @default(0)
+  visitors   Int    @default(0)
+  guests     Int    @default(0)
+}
+
+/// One row per anonymous visitor per day, only to count unique visitors. The hash mixes a
+/// secret with the day, so it changes every day and can't be traced back to an IP. Pruned daily.
+model TrafficVisitor {
+  day   String
+  hash  String
+  guest Boolean
+
+  @@id([day, hash])
+}
+
+/// Page views per path per day (for "top pages").
+model TrafficPage {
+  day   String
+  path  String
+  views Int    @default(0)
+
+  @@id([day, path])
+  @@index([day, views])
+}
+
+/// Watch Together: a host picks an episode and everyone in the room watches it with a chat.
+model WatchRoom {
+  id         String    @id @default(cuid())
+  /// Join code, also the room's URL. Six characters without look-alikes (no 0/O, 1/I).
+  code       String    @unique
+  name       String
+  hostId     String
+  host       User      @relation("RoomHost", fields: [hostId], references: [id], onDelete: Cascade)
+  isPublic   Boolean   @default(false)
+  anilistId  Int
+  episode    Int
+  animeTitle String    @default("")
+  animeCover String    @default("")
+  /// Where the host's player was (seconds) at positionAt, and whether it was playing.
+  position   Float     @default(0)
+  positionAt DateTime  @default(now())
+  playing    Boolean   @default(false)
+  chatOn     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  lastActiveAt DateTime @default(now())
+  closedAt   DateTime?
+
+  members  WatchRoomMember[]
+  messages WatchRoomMessage[]
+
+  @@index([isPublic, closedAt, lastActiveAt])
+  @@index([hostId])
+}
+
+model WatchRoomMember {
+  roomId     String
+  room       WatchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt   DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  /// Removed by the host: can't rejoin this room.
+  kicked     Boolean   @default(false)
+
+  @@id([roomId, userId])
+  @@index([roomId, lastSeenAt])
+}
+
+model WatchRoomMessage {
+  id        String    @id @default(cuid())
+  roomId    String
+  room      WatchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime  @default(now())
+
+  @@index([roomId, createdAt])
 }

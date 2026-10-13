@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fail, readJson, requireUserId } from "@/lib/http";
+import { fail, readJson, requireUserId, tooFast } from "@/lib/http";
 import { syncEpisodeAlerts } from "@/lib/notifications";
 
 export async function GET(req: Request) {
@@ -18,6 +18,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Not logged in", 401);
+
+  const slow = tooFast(`notifications:${userId}`, 60);
+
+  if (slow) return slow;
   const { ids } = await readJson<{ ids: string[] }>(req);
   const where = Array.isArray(ids) && ids.length ? { userId, id: { in: ids.map(String).slice(0, 200) }, readAt: null } : { userId, readAt: null };
   const { count } = await prisma.notification.updateMany({ where, data: { readAt: new Date() } });
@@ -27,6 +31,10 @@ export async function POST(req: Request) {
 export async function DELETE() {
   const userId = await requireUserId();
   if (!userId) return fail("Not logged in", 401);
+
+  const slow = tooFast(`notifications:${userId}`, 60);
+
+  if (slow) return slow;
   await prisma.notification.deleteMany({ where: { userId, readAt: { not: null } } });
   return NextResponse.json({ ok: true });
 }

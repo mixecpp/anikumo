@@ -9,7 +9,7 @@ import PostFeed from "@/components/posts/Posts";
 import FollowButton from "@/components/FollowButton";
 import RoleIcon from "@/components/RoleIcon";
 import { Avatar } from "@/components/UserMenu";
-import { TelegramLink } from "@/components/TelegramCard";
+import { SocialCard } from "@/components/Socials";
 
 export const metadata: Metadata = pageMeta({ title: "Feed", description: "Posts and anime recommendations from the AniKumo community.", path: "/feed" });
 
@@ -154,7 +154,7 @@ export default async function FeedPage({ searchParams }: Props) {
             </section>
           )}
 
-          <TelegramLink text="Chat with the community off-site" />
+          <SocialCard text="Chat with us on Telegram, watch clips on TikTok" />
 
           <p className="px-1 text-[11px] leading-relaxed text-muted">
             Keep it kind and spoiler-tagged (wrap spoilers in ||double bars||). Posts follow each person&apos;s profile privacy. <Link href="/rules" className="underline-offset-2 hover:text-fg hover:underline">Rules</Link>

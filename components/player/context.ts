@@ -4,7 +4,8 @@ import { createContext, useContext } from "react";
 import type WatchClient from "../WatchClient";
 
 export type WatchProps = React.ComponentProps<typeof WatchClient>;
-export type PlayerSession = { props: WatchProps; href: string; title: string; image: string };
+/** `remountKey`: changing it reloads the player (Watch Together uses it to jump to the host's time). */
+export type PlayerSession = { props: WatchProps; href: string; title: string; image: string; remountKey?: string };
 
 export type PlayerCtx = {
   /** Called by the watch page's slot: start (or keep) playing this episode. */

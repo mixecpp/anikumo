@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fail, readJson, requireUserId } from "@/lib/http";
+import { fail, readJson, requireUserId, tooFast } from "@/lib/http";
 import { browseQuery, parseBrowseParams } from "@/lib/browse-params";
 
 export async function GET() {
@@ -14,6 +14,10 @@ export async function GET() {
 export async function POST(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Log in to save views", 401);
+
+  const slow = tooFast(`presets:${userId}`, 30);
+
+  if (slow) return slow;
   const b = await readJson<{ name: string; query: string }>(req);
   const name = String(b.name ?? "").trim().slice(0, 40);
   if (!name) return fail("Name your view");
@@ -27,6 +31,10 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Not logged in", 401);
+
+  const slow = tooFast(`presets:${userId}`, 30);
+
+  if (slow) return slow;
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return fail("id required");
   await prisma.browsePreset.deleteMany({ where: { id, userId } });

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo";
-import { Award, Eye, Heart, Lock, MessageSquare, Star } from "lucide-react";
+import { Award, Eye, Heart, Lock, MessageSquare, Settings2, Star } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getUserId, roleOf } from "@/lib/auth";
 import { getAccountStats } from "@/lib/account";
@@ -17,6 +17,8 @@ import SpoilerText from "@/components/SpoilerText";
 import PostFeed from "@/components/posts/Posts";
 import RoleIcon from "@/components/RoleIcon";
 import ProfileWall from "@/components/profile/ProfileWall";
+import ProfileEditor from "@/components/profile/ProfileEditor";
+import ShareProfile from "@/components/profile/ShareProfile";
 
 type Props = { params: Promise<{ username: string }>; searchParams: Promise<{ tab?: string; before?: string; preview?: string }> };
 
@@ -98,6 +100,30 @@ export default async function ProfilePage({ params, searchParams }: Props) {
     ...(show.comments ? [["comments", "Comments", user._count.comments ? String(user._count.comments) : ""]] : []),
   ] as [string, string, string][];
 
+  const likes = show.posts ? await prisma.postLike.count({ where: { post: { userId: user.id } } }) : 0;
+  const stats: [string, number][] = [
+    ...(show.follows ? ([["Following", user._count.following], ["Followers", user._count.followers]] as [string, number][]) : []),
+    ...(show.posts ? ([["Posts", user._count.posts], ["Likes", likes]] as [string, number][]) : []),
+  ];
+  const actions = isOwner ? (
+    <>
+      {sp.preview !== "1" && (
+        <Link href={`/u/${user.username}?preview=1`} className="btn btn-ghost">
+          <Eye className="h-4 w-4" /> View as visitor
+        </Link>
+      )}
+      <Link href="/account/settings#visibility" className="btn btn-ghost">
+        <Settings2 className="h-4 w-4" /> Privacy
+      </Link>
+      <ShareProfile username={user.username} className="!flex-none" />
+    </>
+  ) : (
+    <>
+      {(user.allowFollows || follow) && <FollowButton username={user.username} initial={!!follow} />}
+      <ShareProfile username={user.username} className="!flex-none" />
+    </>
+  );
+
   return (
     <div className="mx-auto max-w-[1100px] px-4 pt-6 md:px-8 md:pt-8">
       {isOwner && user.profileVisibility !== "everyone" && !sp.preview && (
@@ -119,7 +145,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
       )}
 
       <header>
-        <div className="relative -mx-4 aspect-[3/1] overflow-hidden bg-white/[0.03] sm:mx-0 sm:aspect-[4/1] sm:rounded-2xl">
+        <div className="relative -mx-4 aspect-[5/2] overflow-hidden bg-white/[0.03] sm:mx-0 sm:aspect-[4/1] sm:rounded-2xl">
           {user.profileBanner ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={user.profileBanner} alt="" className="h-full w-full object-cover" />
@@ -127,39 +153,36 @@ export default async function ProfilePage({ params, searchParams }: Props) {
             <div className="h-full w-full" style={{ background: `radial-gradient(120% 140% at 15% 0%, ${user.avatarColor}55, transparent 60%), linear-gradient(180deg, rgba(255,255,255,0.03), transparent)` }} />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/10 to-transparent" />
+          {isOwner && sp.preview !== "1" && <ProfileEditor username={user.username} bio={user.bio} banner={user.profileBanner} avatar={user.avatar} avatarColor={user.avatarColor} />}
         </div>
-        <div className="relative -mt-10 flex flex-wrap items-end gap-4 px-1 sm:-mt-12 sm:px-5">
+
+        {/* Phones: centred and stacked like an app profile. Desktop: avatar, name and actions in a row. */}
+        <div className="relative -mt-12 flex flex-col items-center gap-3 px-1 text-center sm:flex-row sm:items-end sm:gap-4 sm:px-5 sm:text-left">
           <div className="rounded-full ring-4 ring-bg">
-            <Avatar name={user.username} color={user.avatarColor} avatar={user.avatar} size={84} />
+            <Avatar name={user.username} color={user.avatarColor} avatar={user.avatar} size={88} />
           </div>
-          <div className="min-w-0 flex-1 pb-1">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+          <div className="min-w-0 max-w-full sm:flex-1 sm:pb-1">
+            <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-2.5 gap-y-1 sm:justify-start">
               <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-3xl">{user.username}</h1>
               <RoleIcon role={roleOf(user)} label />
             </div>
-            <p className="mt-1 font-mono text-[11px] text-muted">
-              {show.follows && `${user._count.followers} followers · ${user._count.following} following · `}
-              joined {user.createdAt.toLocaleDateString(undefined, { month: "short", year: "numeric" })}
-            </p>
+            <p className="mt-1 font-mono text-[11px] text-muted">joined {user.createdAt.toLocaleDateString(undefined, { month: "short", year: "numeric" })}</p>
           </div>
-          <div className="flex gap-2 pb-1">
-            {isOwner ? (
-              <>
-                {!sp.preview && (
-                  <Link href={`/u/${user.username}?preview=1`} className="btn btn-ghost">
-                    <Eye className="h-4 w-4" /> <span className="hidden sm:inline">View as visitor</span>
-                  </Link>
-                )}
-                <Link href="/account/settings#visibility" className="btn btn-ghost">
-                  Edit profile
-                </Link>
-              </>
-            ) : user.allowFollows || follow ? (
-              <FollowButton username={user.username} initial={!!follow} />
-            ) : null}
-          </div>
+          <div className="hidden gap-2 pb-1 sm:flex">{actions}</div>
         </div>
-        {user.bio && <p className="mt-3 max-w-xl px-1 text-sm text-fg/75 sm:px-5">{user.bio}</p>}
+
+        <dl className="mt-4 flex justify-center gap-7 sm:justify-start sm:px-5">
+          {stats.map(([label, value]) => (
+            <div key={label} className="text-center sm:text-left">
+              <dt className="sr-only">{label}</dt>
+              <dd className="text-base font-semibold tabular-nums">{value.toLocaleString()}</dd>
+              <div className="text-[11px] text-muted">{label}</div>
+            </div>
+          ))}
+        </dl>
+
+        {user.bio && <p className="mx-auto mt-3 max-w-xl whitespace-pre-line px-1 text-center text-sm text-fg/75 sm:mx-0 sm:px-5 sm:text-left">{user.bio}</p>}
+        <div className="mt-4 flex gap-2 px-1 sm:hidden [&>*]:flex-1">{actions}</div>
       </header>
 
       {tabs.length > 1 && (
@@ -174,7 +197,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
                 key={key}
                 href={`/u/${user.username}${q.size ? `?${q}` : ""}`}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex items-center gap-1.5 px-3 pb-3 pt-1 text-sm transition-colors ${active ? "text-fg" : "text-muted hover:text-fg"}`}
+                className={`relative flex flex-1 items-center justify-center gap-1.5 px-3 pb-3 pt-1 text-sm transition-colors sm:flex-none ${active ? "text-fg" : "text-muted hover:text-fg"}`}
               >
                 {label}
                 {count && <span className="font-mono text-[11px] text-muted">{count}</span>}

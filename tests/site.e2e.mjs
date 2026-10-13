@@ -106,6 +106,8 @@ test("accounts, lists, social and pages", async (t) => {
     });
 
     await t.test("follow requires a public profile", async () => {
+      // New accounts start public; make this one private to check the rule.
+      await a("PATCH", "/api/account", { profileVisibility: "private" });
       assert.equal((await b("POST", "/api/follow", { username: A.username })).status, 404);
       await a("PATCH", "/api/account", { profilePublic: true });
       assert.equal((await b("POST", "/api/follow", { username: A.username })).json.following, true);

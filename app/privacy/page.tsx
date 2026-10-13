@@ -38,6 +38,11 @@ export default function PrivacyPage() {
         <h2>What we store if you just browse</h2>
         <ul>
           <li>Nothing tied to you. Your IP address is briefly held in memory to stop abuse (rate limiting) and then forgotten.</li>
+          <li>
+            Anonymous visit counts: which pages are viewed and roughly how many people visit each day. To count unique visitors we keep a scrambled code made from a secret
+            and the date, which changes every day, can&apos;t be turned back into your IP address, and is deleted after two days. If your browser sends &quot;Do Not Track&quot;
+            or Global Privacy Control, you aren&apos;t counted at all.
+          </li>
           <li>If a page crashes, we log the error and the page address, plus your account if you&apos;re logged in, so we can fix it.</li>
         </ul>
       </section>
@@ -73,7 +78,7 @@ export default function PrivacyPage() {
       <section>
         <h2>Who can see what</h2>
         <ul>
-          <li>Your profile is private until you change it. You pick who can see it, which parts they see, and who can comment on it.</li>
+          <li>New profiles are public, so other members can find you and follow you. You can make yours followers-only or private anytime, and pick which parts people see and who can comment.</li>
           <li>Comments and reviews on anime pages are public. Posts follow your profile&apos;s privacy setting.</li>
           <li>Moderators see reported content and what&apos;s needed to moderate it. Admins can see basic account details (like when you joined and were last active) to keep the site safe.</li>
         </ul>
@@ -98,7 +103,8 @@ export default function PrivacyPage() {
         <h2>Keeping it safe</h2>
         <p>
           Connections are encrypted (HTTPS), passwords and recovery keys are hashed, and sensitive settings are encrypted in our database. You can add two-factor authentication for
-          extra protection. Nothing online is perfectly secure, but we take it seriously.
+          extra protection. Our pages also block known tracking networks, strip tracking tags from links, and stop the embedded video players from using your camera,
+          microphone, location, motion sensors or the browser&apos;s advertising-interest features. Nothing online is perfectly secure, but we take it seriously.
         </p>
       </section>
 

@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fail, readJson, requireUserId } from "@/lib/http";
+import { fail, readJson, requireUserId, tooFast } from "@/lib/http";
 
 /** POST { reviewId } toggles "helpful". You can't vote on your own review. */
 export async function POST(req: Request) {
   const userId = await requireUserId();
   if (!userId) return fail("Log in to vote", 401);
+
+  const slow = tooFast(`review-vote:${userId}`, 60);
+
+  if (slow) return slow;
   const { reviewId } = await readJson<{ reviewId: string }>(req);
   const review = await prisma.review.findUnique({ where: { id: String(reviewId ?? "") }, select: { id: true, userId: true } });
   if (!review) return fail("Not found", 404);
