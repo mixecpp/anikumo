@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type Identity = { userId: string | null; anilistId: number; episode: number; title: string; coverImage: string; completed: boolean };
+type Identity = { userId: string | null; anilistId: number; episode: number; title: string; coverImage: string; completed: boolean; record?: boolean };
 type Sample = { progressSeconds: number; durationSeconds: number; sampledAt: number };
 type ProgressResult = { completed: boolean; progressSeconds?: number; durationSeconds?: number; sampledAt?: number };
 
@@ -23,10 +23,13 @@ export function useWatchProgress(identity: Identity) {
   const issued = useRef(0);
   const queueKey = identity.userId ? `aw_pending_progress:${identity.userId}:${identity.anilistId}:${identity.episode}` : null;
   const mounted = useRef(true);
+  // Read at save time, so it can flip (e.g. becoming the Watch Together host) without a reload.
+  const record = useRef(identity.record !== false);
+  record.current = identity.record !== false;
 
   const save = useCallback(async (final = false) => {
     const intent = pendingCompletion.current;
-    if (!identity.userId || !queueKey || (!latest.current && !intent)) return false;
+    if (!identity.userId || !queueKey || !record.current || (!latest.current && !intent)) return false;
     const requestNumber = ++issued.current;
     const sample = latest.current;
     const payload = {

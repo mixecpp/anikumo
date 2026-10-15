@@ -45,8 +45,13 @@ export default function PlayerProvider({ children }: { children: React.ReactNode
   const detachTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const open = useCallback((s: PlayerSession) => {
-    // Same episode as what's already playing: keep the running player as it is.
-    setSession((prev) => (prev && sessionKey(prev) === sessionKey(s) ? prev : s));
+    // Same episode as what's already playing: keep the running player as it is. Only whether it
+    // saves to history can change in place (Watch Together: becoming or handing off the host).
+    setSession((prev) => {
+      if (!prev || sessionKey(prev) !== sessionKey(s)) return s;
+      if (prev.props.recordHistory === s.props.recordHistory) return prev;
+      return { ...prev, props: { ...prev.props, recordHistory: s.props.recordHistory } };
+    });
   }, []);
 
   const attach = useCallback((el: HTMLElement | null) => {

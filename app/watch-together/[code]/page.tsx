@@ -57,6 +57,8 @@ export default async function RoomPage({ params }: Props) {
         nextEpisode: null,
         hasPrev: false,
         userId,
+        // Only the host's history records the episode; everyone else is a guest.
+        recordHistory: !!userId && room.hostId === userId,
         embedsEnabled: sourceSetup().embeds,
         source,
         // In a room the start time comes from the host, so "resume" is always on.

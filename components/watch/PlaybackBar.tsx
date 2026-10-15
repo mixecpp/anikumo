@@ -7,6 +7,7 @@ import PlaybackSettings from "../PlaybackSettings";
 import PlayerButton, { playerButtonClass } from "./PlayerButton";
 import ProviderDropdown from "./ProviderDropdown";
 import PopOutButton from "../player/PopOutButton";
+import TvButton from "./TvButton";
 
 type Props = {
   anilistId: number;
@@ -14,6 +15,7 @@ type Props = {
   controls: boolean;
   problem: boolean;
   loggedIn: boolean;
+  recordHistory: boolean;
   watched: boolean;
   progressStatus: "idle" | "saving" | "saved" | "error";
   settings: Settings;
@@ -43,12 +45,13 @@ export default function PlaybackBar(p: Props) {
       <ProviderDropdown disabled={!p.enabled} />
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
-        {p.loggedIn ? (
+        {p.loggedIn ? (!p.recordHistory ? null : 
           <PlayerButton label={progressLabel} aria-pressed={p.watched} disabled={p.progressStatus === "saving"} onClick={p.progressStatus === "error" ? p.onRetrySave : p.onToggleWatched} className={p.progressStatus === "error" ? "!text-amber-300" : p.watched ? "!text-success" : ""}>
             {p.progressStatus === "saving" ? <LoaderCircle className="h-[18px] w-[18px] animate-spin" /> : p.progressStatus === "error" ? <CloudOff className="h-[18px] w-[18px]" /> : p.watched ? <CheckCheck className="h-[18px] w-[18px]" /> : <CircleCheck className="h-[18px] w-[18px]" />}
           </PlayerButton>
         ) : <Link href="/login" aria-label="Log in to save watch progress" title="Log in to save watch progress" className={playerButtonClass}><LogIn className="h-[18px] w-[18px]" /></Link>}
         {p.enabled && <PlaybackSettings settings={p.settings} update={p.updateSettings} status={p.settingsStatus} controls={p.controls} loggedIn={p.loggedIn} problem={p.problem} onReload={p.onReload} onUseStandard={p.onUseStandard} />}
+        {p.enabled && <TvButton />}
         <PopOutButton />
         <a href={`https://anilist.co/anime/${p.anilistId}`} target="_blank" rel="noopener noreferrer" aria-label="View anime on AniList (opens in a new tab)" title="View on AniList" className={playerButtonClass}>
           <AniListLogo />

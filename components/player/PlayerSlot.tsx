@@ -15,7 +15,7 @@ export default function PlayerSlot({ href, image, syncKey, ...props }: WatchProp
 
   // Rebuild the session only when the episode (or viewer) changes, not on every render.
   // syncKey lets Watch Together reload the player at a new start time.
-  const key = `${props.userId}:${props.anilistId}:${props.episode}:${syncKey ?? ""}`;
+  const key = `${props.userId}:${props.anilistId}:${props.episode}:${syncKey ?? ""}:${props.recordHistory !== false}`;
   const latest = useRef({ props, href, title: props.title, image, remountKey: syncKey });
   latest.current = { props, href, title: props.title, image, remountKey: syncKey };
   useEffect(() => {

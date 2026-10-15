@@ -286,7 +286,7 @@ export default function RoomClient({ code, player, episodes }: { code: string; p
 
       <div className={`grid gap-5 ${chatOpen ? "lg:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
         <div className="min-w-0">
-          <PlayerSlot {...player} resumeAt={resumeAt} syncKey={syncKey} />
+          <PlayerSlot {...player} resumeAt={resumeAt} syncKey={syncKey} recordHistory={data?.me ? data.me.isHost : player.recordHistory} />
 
           {/* Sync status: a small icon, nothing to manage. */}
           <div className="mt-2 flex items-center gap-1.5 px-1 text-[11px] text-muted" aria-live="polite">

@@ -14,6 +14,8 @@ type Props = {
   anilistId: number; episode: number; idMal: number | null; title: string; coverImage: string;
   resumeAt: number; completed: boolean; hasNext: boolean; hasPrev: boolean; nextEpisode: number | null;
   userId: string | null; embedsEnabled: boolean; source: PlaybackSource; initialSettings: Settings;
+  /** false: don't save this to the viewer's history (Watch Together guests). Can change without a reload. */
+  recordHistory?: boolean;
 };
 
 export default function WatchClient(p: Props) {
@@ -33,7 +35,7 @@ function EpisodeWatch(p: Props) {
   const [initializing, setInitializing] = useState(true);
   const audioRef = useRef(p.initialSettings.audioTrack);
   const [resumeAt, setResumeAt] = useState(p.completed ? 0 : p.resumeAt);
-  const progress = useWatchProgress({ userId: p.userId, anilistId: p.anilistId, episode: p.episode, title: p.title, coverImage: p.coverImage, completed: p.completed });
+  const progress = useWatchProgress({ userId: p.userId, anilistId: p.anilistId, episode: p.episode, title: p.title, coverImage: p.coverImage, completed: p.completed, record: p.recordHistory !== false });
   const latestProgress = progress.latest;
   const saveProgress = progress.save;
   const endedRef = useRef(false);
@@ -133,6 +135,7 @@ function EpisodeWatch(p: Props) {
         controls={source.controls}
         problem={p.embedsEnabled && source.controls && ((!initializing && !player.connected) || player.playerError)}
         loggedIn={!!p.userId}
+        recordHistory={p.recordHistory !== false}
         watched={progress.watched}
         progressStatus={progress.saved}
         settings={settings}
