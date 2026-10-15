@@ -92,9 +92,8 @@ export default function PlayerPopover({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 420, damping: 40 }}
-              className="absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-line bg-bg px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-2 text-sm outline-none"
+              className="absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-2xl bg-bg px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 shadow-[0_-12px_32px_rgba(0,0,0,0.45)] text-sm outline-none"
             >
-              <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-white/15" aria-hidden="true" />
               {header}
               {children}
             </motion.div>

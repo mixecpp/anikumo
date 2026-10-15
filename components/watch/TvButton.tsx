@@ -14,13 +14,18 @@ const DEVICES: { id: Device; label: string }[] = [
   { id: "pc", label: "Computer" },
 ];
 
-// The video comes from an embedded player we don't control, so its own AirPlay/Cast button can't
-// be switched on from here. Screen mirroring works with every player, so that's what this explains.
+// The video comes from an embedded player we don't control, so we can't add an AirPlay button to it.
+// On iPhone and iPad it plays through Safari's own video player, though, and that one can AirPlay the
+// video itself (not just mirror the screen). Everywhere else, screen mirroring or casting works.
+const TIPS: Partial<Record<Device, string>> = {
+  ios: "Still not showing? Control Center, then Screen Mirroring, puts your whole screen on the TV.",
+};
+
 const STEPS: Record<Device, string[]> = {
   ios: [
-    "Open Control Center: swipe down from the top-right corner.",
-    "Tap Screen Mirroring and pick your Apple TV or AirPlay TV.",
-    "Start the episode and turn your phone sideways.",
+    "Start the episode, then tap the fullscreen button in the player.",
+    "Tap the AirPlay icon and pick your Apple TV or AirPlay TV.",
+    "No AirPlay icon? Open Control Center, press and hold the card that's playing, then tap the AirPlay icon on it.",
   ],
   mac: [
     "Click Control Center in the menu bar.",
@@ -68,7 +73,7 @@ export default function TvButton() {
       <PlayerButton ref={trigger} label={label} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((v) => !v)} className={open ? "bg-white/[0.07] !text-fg" : ""}>
         <Icon className="h-[18px] w-[18px]" />
       </PlayerButton>
-      <PlayerPopover open={open} onClose={() => setOpen(false)} anchor={trigger} title="Watch on a TV" width={300} height={320}>
+      <PlayerPopover open={open} onClose={() => setOpen(false)} anchor={trigger} title={apple ? "AirPlay" : "Watch on a TV"} width={300} height={340}>
         <div className="mb-3 flex flex-wrap gap-1" role="group" aria-label="Your device">
           {DEVICES.map((d) => (
             <button
@@ -90,6 +95,7 @@ export default function TvButton() {
             </li>
           ))}
         </ol>
+        {TIPS[device] && <p className="mt-3 text-[11px] leading-snug text-muted">{TIPS[device]}</p>}
         <p className="mt-3 border-t border-white/[0.06] pt-2.5 text-[11px] leading-snug text-muted">Your phone or computer and the TV need to be on the same Wi‑Fi.</p>
       </PlayerPopover>
     </div>
