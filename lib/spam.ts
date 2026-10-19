@@ -13,7 +13,7 @@ import { rateLimit } from "./rate-limit";
  *  - max 2 links, never invite links
  *  - no posting the exact same thing again within 10 minutes
  */
-export type WriteKind = "comment" | "review" | "post" | "post_comment" | "profile_comment" | "room_message";
+export type WriteKind = "comment" | "review" | "post" | "post_comment" | "profile_comment" | "room_message" | "chat_message";
 
 const LINK = /\b(?:https?:\/\/|www\.)\S+/gi;
 const INVITE = /\b(?:discord\.gg|discord(?:app)?\.com\/invite|t\.me|chat\.whatsapp\.com)\b/i;
@@ -33,8 +33,8 @@ export async function checkWrite(userId: string, kind: WriteKind, ...texts: stri
   // Staff aren't rate limited, but still go through the language filter above.
   if (user.isAdmin || user.isModerator) return null;
 
-  // Watch Together chat is a conversation, so it gets its own, quicker allowance.
-  const chat = kind === "room_message";
+  // Chats (live chat, Watch Together) are conversations, so they get their own, quicker allowance.
+  const chat = kind === "room_message" || kind === "chat_message";
   if (chat ? !rateLimit(`chat:${userId}`, 20, 60_000).ok : !rateLimit(`write:${userId}`, 8, 60_000).ok) return "Slow down — you're posting very fast";
   const age = Date.now() - user.createdAt.getTime();
   if (age < DAY) {
@@ -66,6 +66,8 @@ async function recentSame(userId: string, kind: WriteKind, compact: string) {
             ? await prisma.postComment.findMany({ where: { userId, createdAt: { gt: since } }, select, take: 5, orderBy: { createdAt: "desc" } })
             : kind === "room_message"
               ? await prisma.watchRoomMessage.findMany({ where: { userId, createdAt: { gt: new Date(Date.now() - 60_000) } }, select, take: 3, orderBy: { createdAt: "desc" } })
+              : kind === "chat_message"
+                ? await prisma.chatMessage.findMany({ where: { userId, createdAt: { gt: new Date(Date.now() - 60_000) } }, select, take: 3, orderBy: { createdAt: "desc" } })
               : await prisma.profileComment.findMany({ where: { userId, createdAt: { gt: since } }, select, take: 5, orderBy: { createdAt: "desc" } });
   return rows.some((r) => squash(r.body) === compact);
 }

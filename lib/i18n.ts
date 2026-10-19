@@ -9,6 +9,7 @@ const en = {
   "nav.library": "Library",
   "nav.account": "Account",
   "nav.feed": "Feed",
+  "nav.chat": "Chat",
   "nav.together": "Together",
   "nav.community": "Community",
   "search.placeholder": "Search",
@@ -77,7 +78,7 @@ export type MessageKey = keyof typeof en;
 type Dict = Partial<Record<MessageKey, string>>;
 
 const es: Dict = {
-  "nav.home": "Inicio", "nav.browse": "Explorar", "nav.schedule": "Horario", "nav.season": "Temporada", "nav.charts": "Rankings", "nav.library": "Biblioteca", "nav.account": "Cuenta", "nav.feed": "Feed", "nav.together": "Juntos",
+  "nav.home": "Inicio", "nav.browse": "Explorar", "nav.schedule": "Horario", "nav.season": "Temporada", "nav.charts": "Rankings", "nav.library": "Biblioteca", "nav.account": "Cuenta", "nav.feed": "Feed", "nav.chat": "Chat", "nav.together": "Juntos",
   "search.placeholder": "Buscar", "search.recent": "Vistos recientemente", "search.clear": "Borrar", "search.seeAll": "Ver todos los resultados",
   "menu.overview": "Resumen", "menu.list": "Mi lista", "menu.history": "Historial", "menu.favorites": "Favoritos", "menu.stats": "Estadísticas", "menu.lists": "Listas", "menu.notifications": "Notificaciones", "menu.profile": "Perfil público", "menu.settings": "Ajustes", "menu.admin": "Admin", "menu.logout": "Cerrar sesión", "menu.login": "Iniciar sesión", "menu.register": "Crear cuenta",
   "footer.data": "Datos de", "footer.skip": "Tiempos de salto de", "footer.shortcuts": "Atajos de teclado",
@@ -88,7 +89,7 @@ const es: Dict = {
 };
 
 const fr: Dict = {
-  "nav.home": "Accueil", "nav.browse": "Explorer", "nav.schedule": "Planning", "nav.season": "Saison", "nav.charts": "Classements", "nav.library": "Bibliothèque", "nav.account": "Compte", "nav.feed": "Fil", "nav.together": "Ensemble",
+  "nav.home": "Accueil", "nav.browse": "Explorer", "nav.schedule": "Planning", "nav.season": "Saison", "nav.charts": "Classements", "nav.library": "Bibliothèque", "nav.account": "Compte", "nav.feed": "Fil", "nav.chat": "Chat", "nav.together": "Ensemble",
   "search.placeholder": "Rechercher", "search.recent": "Vus récemment", "search.clear": "Effacer", "search.seeAll": "Voir tous les résultats",
   "menu.overview": "Aperçu", "menu.list": "Ma liste", "menu.history": "Historique", "menu.favorites": "Favoris", "menu.stats": "Statistiques", "menu.lists": "Listes", "menu.notifications": "Notifications", "menu.profile": "Profil public", "menu.settings": "Paramètres", "menu.admin": "Admin", "menu.logout": "Se déconnecter", "menu.login": "Se connecter", "menu.register": "Créer un compte",
   "footer.data": "Données de", "footer.skip": "Passages de", "footer.shortcuts": "Raccourcis clavier",
@@ -99,7 +100,7 @@ const fr: Dict = {
 };
 
 const de: Dict = {
-  "nav.home": "Start", "nav.browse": "Entdecken", "nav.schedule": "Zeitplan", "nav.season": "Saison", "nav.charts": "Charts", "nav.library": "Bibliothek", "nav.account": "Konto", "nav.feed": "Feed", "nav.together": "Zusammen",
+  "nav.home": "Start", "nav.browse": "Entdecken", "nav.schedule": "Zeitplan", "nav.season": "Saison", "nav.charts": "Charts", "nav.library": "Bibliothek", "nav.account": "Konto", "nav.feed": "Feed", "nav.chat": "Chat", "nav.together": "Zusammen",
   "search.placeholder": "Suchen", "search.recent": "Zuletzt angesehen", "search.clear": "Leeren", "search.seeAll": "Alle Ergebnisse",
   "menu.overview": "Übersicht", "menu.list": "Meine Liste", "menu.history": "Verlauf", "menu.favorites": "Favoriten", "menu.stats": "Statistiken", "menu.lists": "Listen", "menu.notifications": "Benachrichtigungen", "menu.profile": "Öffentliches Profil", "menu.settings": "Einstellungen", "menu.admin": "Admin", "menu.logout": "Abmelden", "menu.login": "Anmelden", "menu.register": "Konto erstellen",
   "footer.data": "Daten von", "footer.skip": "Skip-Zeiten von", "footer.shortcuts": "Tastenkürzel",
@@ -110,7 +111,7 @@ const de: Dict = {
 };
 
 const ja: Dict = {
-  "nav.home": "ホーム", "nav.browse": "探す", "nav.schedule": "放送予定", "nav.season": "今期", "nav.charts": "ランキング", "nav.library": "ライブラリ", "nav.account": "アカウント", "nav.feed": "フィード", "nav.together": "一緒に見る",
+  "nav.home": "ホーム", "nav.browse": "探す", "nav.schedule": "放送予定", "nav.season": "今期", "nav.charts": "ランキング", "nav.library": "ライブラリ", "nav.account": "アカウント", "nav.feed": "フィード", "nav.chat": "チャット", "nav.together": "一緒に見る",
   "search.placeholder": "検索", "search.recent": "最近見た作品", "search.clear": "クリア", "search.seeAll": "すべての結果",
   "menu.overview": "概要", "menu.list": "マイリスト", "menu.history": "視聴履歴", "menu.favorites": "お気に入り", "menu.stats": "統計", "menu.lists": "カスタムリスト", "menu.notifications": "通知", "menu.profile": "公開プロフィール", "menu.settings": "設定", "menu.admin": "管理", "menu.logout": "ログアウト", "menu.login": "ログイン", "menu.register": "アカウント作成",
   "footer.data": "データ提供", "footer.skip": "スキップ時間", "footer.shortcuts": "キーボードショートカット",

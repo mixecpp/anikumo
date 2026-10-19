@@ -7,6 +7,9 @@ export type WatchProps = React.ComponentProps<typeof WatchClient>;
 /** `remountKey`: changing it reloads the player (Watch Together uses it to jump to the host's time). */
 export type PlayerSession = { props: WatchProps; href: string; title: string; image: string; remountKey?: string };
 
+/** What is playing right now (for sharing it in the live chat). */
+export type NowPlaying = { anilistId: number; episode: number; title: string; image: string } | null;
+
 export type PlayerCtx = {
   /** Called by the watch page's slot: start (or keep) playing this episode. */
   open: (s: PlayerSession) => void;
@@ -19,6 +22,7 @@ export type PlayerCtx = {
   /** Desktop: has the player been popped out into a floating window? */
   popped: boolean;
   setPopped: (v: boolean) => void;
+  nowPlaying: NowPlaying;
 };
 
 // Lives in its own module so the player's own controls can use it without importing

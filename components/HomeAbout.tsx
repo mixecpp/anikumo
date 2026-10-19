@@ -1,4 +1,5 @@
 import Link from "next/link";
+import OpenChatButton from "./live/OpenChatButton";
 
 /**
  * The home page's own heading and a short, plain description of the site. Search engines read
@@ -41,11 +42,8 @@ export default function HomeAbout() {
           <Link href="/watch-together" className={link}>
             watch party
           </Link>{" "}
-          and everyone stays on the same episode with a chat on the side. Share recommendations in the{" "}
-          <Link href="/feed" className={link}>
-            community feed
-          </Link>
-          .
+          and everyone stays on the same episode with a chat on the side, or hang out in the{" "}
+          <OpenChatButton className={link}>live chat</OpenChatButton> with everyone on the site.
         </p>
       </div>
     </section>

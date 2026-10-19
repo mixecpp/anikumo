@@ -7,7 +7,6 @@ import PlaybackSettings from "../PlaybackSettings";
 import PlayerButton, { playerButtonClass } from "./PlayerButton";
 import ProviderDropdown from "./ProviderDropdown";
 import PopOutButton from "../player/PopOutButton";
-import TvButton from "./TvButton";
 
 type Props = {
   anilistId: number;
@@ -51,7 +50,6 @@ export default function PlaybackBar(p: Props) {
           </PlayerButton>
         ) : <Link href="/login" aria-label="Log in to save watch progress" title="Log in to save watch progress" className={playerButtonClass}><LogIn className="h-[18px] w-[18px]" /></Link>}
         {p.enabled && <PlaybackSettings settings={p.settings} update={p.updateSettings} status={p.settingsStatus} controls={p.controls} loggedIn={p.loggedIn} problem={p.problem} onReload={p.onReload} onUseStandard={p.onUseStandard} />}
-        {p.enabled && <TvButton />}
         <PopOutButton />
         <a href={`https://anilist.co/anime/${p.anilistId}`} target="_blank" rel="noopener noreferrer" aria-label="View anime on AniList (opens in a new tab)" title="View on AniList" className={playerButtonClass}>
           <AniListLogo />

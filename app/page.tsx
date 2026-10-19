@@ -18,7 +18,7 @@ import { getUi } from "@/lib/server-i18n";
 import { pickTitle } from "@/lib/prefs-shared";
 import FadeRow from "@/components/FadeRow";
 import TelegramCard, { TELEGRAM_URL, TIKTOK_URL } from "@/components/TelegramCard";
-import CommunityFeed from "@/components/CommunityFeed";
+import HomeLive from "@/components/live/HomeLive";
 import HomeAbout from "@/components/HomeAbout";
 
 export const dynamic = "force-dynamic";
@@ -110,7 +110,7 @@ export default async function Home() {
         <MediaGrid title={t("home.season")} items={noEcchi(data.seasonal.media)} href="/season" />
 
         <Reveal>
-          <CommunityFeed viewerId={userId} />
+          <HomeLive />
         </Reveal>
 
         <Reveal>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeyboardInset } from "../useKeyboardInset";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useDragControls } from "motion/react";
 import { ChevronRight, MessageCircle, X } from "lucide-react";
@@ -145,23 +146,6 @@ function CommentsSheet({ open, onClose, count, anilistId, episode, loggedIn }: P
 }
 
 /** How much of the screen the on-screen keyboard covers (0 when it's closed). */
-function useKeyboardInset(active: boolean) {
-  const [inset, setInset] = useState(0);
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!active || !vv) return setInset(0);
-    const update = () => setInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-    };
-  }, [active]);
-  return inset;
-}
-
 /** The full discussion further down the page — on phones it lives in the sheet instead. */
 export function InlineComments({ anilistId, episode, loggedIn }: Props) {
   const phone = usePhone();

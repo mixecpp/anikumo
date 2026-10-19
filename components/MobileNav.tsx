@@ -7,6 +7,7 @@ import NavIcon from "./NavIcon";
 import { useT } from "./PrefsProvider";
 import { Avatar } from "./UserMenu";
 import { NewDot, useChangelogUnseen } from "./WhatsNew";
+import { useLiveOptional } from "./live/LiveProvider";
 
 type U = { username: string; avatarColor: string; avatar: string };
 
@@ -15,9 +16,10 @@ export default function MobileNav({ libraryEnabled, user, latestChangelog }: { l
   const pathname = usePathname();
   const t = useT();
   const unseen = useChangelogUnseen(latestChangelog);
+  const live = useLiveOptional();
   // Five slots, mirroring the desktop menus: Home, Browse (Seasonal, Schedule, Charts and Trailers
-  // are tabs on top of those pages), Feed, Together and Account.
-  const links = navLinks(libraryEnabled).filter((l) => ["home", "browse", "feed", "together"].includes(l.icon));
+  // are tabs on top of those pages), Chat (opens the live chat sheet), Together and Account.
+  const links = navLinks(libraryEnabled).filter((l) => ["home", "browse", "chat", "together"].includes(l.icon));
   const browseHere = ["/browse", "/season", "/schedule", "/charts", "/trailers"].some((h) => isActive(pathname, h));
   const accountHref = user ? "/account" : "/login";
   const accountActive = isActive(pathname, "/account") || isActive(pathname, "/login") || isActive(pathname, "/register");
@@ -26,6 +28,16 @@ export default function MobileNav({ libraryEnabled, user, latestChangelog }: { l
   return (
     <nav aria-label="Primary" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-white/[0.06] bg-bg/85 px-2 pb-[max(env(safe-area-inset-bottom),0.4rem)] pt-1.5 backdrop-blur-xl lg:hidden">
       {links.map((l) => {
+        if (l.icon === "chat")
+          return (
+            <button key={l.href} type="button" onClick={() => live?.toggle()} aria-expanded={!!live?.open} className={item(!!live?.open)}>
+              <span className="relative">
+                <NavIcon name="chat" className="h-5 w-5" strokeWidth={live?.open ? 2.2 : 1.7} />
+                {live?.unread && <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-accent ring-2 ring-bg" />}
+              </span>
+              {t(l.label)}
+            </button>
+          );
         const active = l.icon === "browse" ? browseHere : isActive(pathname, l.href);
         return (
           <Link key={l.href} href={l.href} aria-current={active ? "page" : undefined} className={item(active)}>

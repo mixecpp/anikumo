@@ -177,7 +177,7 @@ test("community", async (t) => {
       assert.equal(n.href, `/post/${rec.json.post.id}#comments`);
 
       const home = await client()("GET", "/");
-      assert.match(home.text, /From the community/);
+      assert.match(home.text, /Live on AniKumo/);
       const feed = await client()("GET", "/feed");
       assert.match(feed.text, /Most recommended/);
     });

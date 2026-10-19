@@ -58,6 +58,8 @@ model User {
   roomsHosted      WatchRoom[]        @relation("RoomHost")
   roomMemberships  WatchRoomMember[]
   roomMessages     WatchRoomMessage[]
+  chatMessages     ChatMessage[]
+  announcements    Announcement[]
   modRequestsMade  ModRequest[]       @relation("ModRequestBy")
   modRequestsAbout ModRequest[]       @relation("ModRequestTarget")
   playbackSettings PlaybackSettings?
@@ -662,4 +664,51 @@ model WatchRoomMessage {
   createdAt DateTime  @default(now())
 
   @@index([roomId, createdAt])
+}
+
+/// The site-wide live chat (the floating chat on every page).
+model ChatMessage {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  /// Quoting another message.
+  replyToId String?
+  replyTo   ChatMessage?  @relation("ChatReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   ChatMessage[] @relation("ChatReply")
+  /// "Share what I'm watching": an episode card under the message (title and cover from AniList, not the sender).
+  anilistId  Int?
+  episode    Int?
+  animeTitle String       @default("")
+  animeCover String       @default("")
+  pinned    Boolean       @default(false)
+  createdAt DateTime      @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+/// Site-wide announcements from admins: shown to everyone (even over a fullscreen episode) until they expire.
+model Announcement {
+  id        String    @id @default(cuid())
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  /// Optional link: a path on the site or an https URL.
+  href      String    @default("")
+  /// "info" | "important"
+  tone      String    @default("info")
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  /// Ended early by an admin.
+  endedAt   DateTime?
+
+  @@index([expiresAt])
+}
+
+/// Small site-wide switches set from the admin pages (e.g. live chat on/off, slow mode).
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }

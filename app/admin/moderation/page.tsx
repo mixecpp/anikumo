@@ -15,7 +15,7 @@ type Props = { searchParams: Promise<{ tab?: string; show?: string }> };
 const PERSON = { select: { id: true, username: true, avatarColor: true, avatar: true, isAdmin: true, isModerator: true, mutedUntil: true, bannedAt: true } } as const;
 type Person = { id: string; username: string; avatarColor: string; avatar: string; isAdmin: boolean; isModerator: boolean; mutedUntil: Date | null; bannedAt: Date | null };
 
-const TYPE_LABEL: Record<ReportableType, string> = { comment: "Comment", review: "Review", post: "Post", post_comment: "Post reply", profile_comment: "Profile comment", room_message: "Watch Together chat" };
+const TYPE_LABEL: Record<ReportableType, string> = { comment: "Comment", review: "Review", post: "Post", post_comment: "Post reply", profile_comment: "Profile comment", room_message: "Watch Together chat", chat_message: "Live chat" };
 const KIND_LABEL: Record<string, string> = { ban: "Ban", clearProfile: "Clear bio & banner", removeAvatar: "Remove picture" };
 
 function ago(d: Date) {

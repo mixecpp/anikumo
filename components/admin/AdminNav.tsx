@@ -5,13 +5,14 @@ import { usePathname } from "next/navigation";
 import { useRef } from "react";
 import { useEdgeFade } from "../useEdgeFade";
 import { motion } from "motion/react";
-import { Activity, Megaphone, ShieldAlert, Server, Users } from "lucide-react";
+import { Activity, Megaphone, MessagesSquare, ShieldAlert, Server, Users } from "lucide-react";
 import { isActive } from "@/lib/nav";
 
 const TABS = [
   { href: "/admin", label: "Overview", icon: Activity },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/moderation", label: "Moderation", icon: ShieldAlert, mods: true },
+  { href: "/admin/community", label: "Community", icon: MessagesSquare, mods: true },
   { href: "/admin/changelog", label: "Changelog", icon: Megaphone },
   { href: "/admin/system", label: "System", icon: Server },
 ];

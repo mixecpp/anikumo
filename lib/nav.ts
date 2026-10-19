@@ -1,6 +1,6 @@
 import type { MessageKey } from "./i18n";
 
-export type NavKey = "home" | "browse" | "season" | "schedule" | "charts" | "feed" | "together" | "library" | "profile";
+export type NavKey = "home" | "browse" | "season" | "schedule" | "charts" | "feed" | "chat" | "together" | "library" | "profile";
 
 export function navLinks(libraryEnabled: boolean) {
   const links: { href: string; label: MessageKey; icon: NavKey }[] = [
@@ -9,7 +9,7 @@ export function navLinks(libraryEnabled: boolean) {
     { href: "/season", label: "nav.season", icon: "season" },
     { href: "/schedule", label: "nav.schedule", icon: "schedule" },
     { href: "/charts", label: "nav.charts", icon: "charts" },
-    { href: "/feed", label: "nav.feed", icon: "feed" },
+    { href: "#chat", label: "nav.chat", icon: "chat" },
     { href: "/watch-together", label: "nav.together", icon: "together" },
   ];
   if (libraryEnabled) links.push({ href: "/library", label: "nav.library", icon: "library" });
@@ -22,7 +22,8 @@ export function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export type MenuItem = { href: string; label: string; hint: string; icon: NavKey | "trailers" | "leaderboard" | "all" };
+/** `action: "chat"` items open the live chat instead of going to a page. */
+export type MenuItem = { href: string; label: string; hint: string; icon: NavKey | "trailers" | "leaderboard" | "all"; action?: "chat" };
 export type MenuEntry = { href: string; label: MessageKey; icon: NavKey; items?: MenuItem[] };
 
 /**
@@ -45,11 +46,11 @@ export function navMenu(libraryEnabled: boolean): MenuEntry[] {
       ],
     },
     {
-      href: "/feed",
+      href: "/watch-together",
       label: "nav.community",
-      icon: "feed",
+      icon: "together",
       items: [
-        { href: "/feed", label: "Feed", hint: "Posts and recommendations", icon: "feed" },
+        { href: "#chat", label: "Live chat", hint: "Talk with everyone on the site", icon: "chat", action: "chat" },
         { href: "/watch-together", label: "Watch together", hint: "Watch in sync with friends", icon: "together" },
         { href: "/leaderboard", label: "Leaderboard", hint: "Who's watched the most", icon: "leaderboard" },
       ],

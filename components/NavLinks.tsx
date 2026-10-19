@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import { isActive, type MenuEntry } from "@/lib/nav";
 import { useT } from "./PrefsProvider";
+import { useLiveOptional } from "./live/LiveProvider";
 
 /**
  * Desktop top bar links. Plain links for single pages; "Browse" and "Community" open a small
@@ -15,6 +16,7 @@ import { useT } from "./PrefsProvider";
 export default function NavLinks({ menu }: { menu: MenuEntry[] }) {
   const pathname = usePathname();
   const t = useT();
+  const live = useLiveOptional();
   const [open, setOpen] = useState<string | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -75,6 +77,27 @@ export default function NavLinks({ menu }: { menu: MenuEntry[] }) {
                   <div role="menu" className="min-w-44 rounded-lg border border-line bg-panel py-1 shadow-lg shadow-black/30">
                     {entry.items.map((item) => {
                       const here = isActive(pathname, item.href);
+                      if (item.action === "chat")
+                        return (
+                          <button
+                            key={item.href}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setOpen(null);
+                              live?.setOpen(true);
+                            }}
+                            className="flex w-full items-center justify-between gap-3 px-3.5 py-1.5 text-left text-sm text-muted transition-colors hover:bg-white/[0.04] hover:text-fg"
+                          >
+                            {item.label}
+                            {!!live?.online && (
+                              <span className="flex items-center gap-1 text-[11px]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                                {live.online}
+                              </span>
+                            )}
+                          </button>
+                        );
                       return (
                         <Link
                           key={item.href}

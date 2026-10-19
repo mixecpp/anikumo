@@ -13,6 +13,9 @@ import Toaster from "@/components/Toaster";
 import Providers from "@/components/Providers";
 import PlayerProvider from "@/components/player/PlayerProvider";
 import ScrollTop from "@/components/ScrollTop";
+import LiveProvider from "@/components/live/LiveProvider";
+import ChatDock from "@/components/live/ChatDock";
+import AnnouncementBar from "@/components/live/AnnouncementBar";
 import Shortcuts, { ShortcutsButton } from "@/components/Shortcuts";
 import CommandPalette from "@/components/CommandPalette";
 import ServiceWorker from "@/components/ServiceWorker";
@@ -70,6 +73,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <PrefsProvider prefs={prefs} loggedIn={!!userId}>
           <Providers>
             <PlayerProvider>
+            <LiveProvider>
               <a href="#main" className="sr-only z-[100] rounded-lg bg-fg px-3 py-2 text-sm text-bg focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
                 Skip to content
               </a>
@@ -111,6 +115,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Shortcuts />
               <CommandPalette />
               <ServiceWorker />
+              <ChatDock />
+              <AnnouncementBar />
+            </LiveProvider>
             </PlayerProvider>
           </Providers>
         </PrefsProvider>

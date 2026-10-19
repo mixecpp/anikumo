@@ -25,7 +25,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
   const n = Number(id);
 
   if (n === 0) {
-    const pages = ["/", "/browse", "/season", "/schedule", "/charts", "/trailers", "/compare", "/leaderboard", "/changelog", "/feed", "/watch-together", "/rules", "/privacy"].map((p) => ({
+    const pages = ["/", "/browse", "/season", "/schedule", "/charts", "/trailers", "/compare", "/leaderboard", "/changelog", "/watch-together", "/rules", "/privacy"].map((p) => ({
       url: appUrl(p),
       lastModified: now,
       changeFrequency: "daily" as const,

@@ -478,3 +478,15 @@ html[data-floating-player="phone"] .scroll-top {
     display: none !important;
   }
 }
+
+/* The live chat launcher and window (components/live/ChatDock), kept clear of the desktop pop-out player. */
+.chat-launcher {
+  bottom: var(--chat-bottom, 1.5rem);
+}
+.chat-window {
+  bottom: calc(var(--chat-bottom, 1.5rem) + 3.25rem);
+  height: min(600px, calc(100vh - var(--chat-bottom, 1.5rem) - 3.25rem - 5.5rem));
+}
+html[data-floating-player="bl"] {
+  --chat-bottom: calc(1.5rem + var(--pip-height, 240px));
+}

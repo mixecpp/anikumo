@@ -39,6 +39,16 @@ export default function RulesPage() {
       </section>
 
       <section>
+        <h2>Live chat</h2>
+        <ul>
+          <li>The live chat is one room for everyone on the site, so keep it friendly and on the anime side of things.</li>
+          <li>Tag spoilers ||like this||, even for shows that finished years ago.</li>
+          <li>Moderators can pin messages, turn on slow mode or pause the chat when it gets busy. Staff names have a crown or shield next to them.</li>
+          <li>Use the report button on a message instead of arguing with the person.</li>
+        </ul>
+      </section>
+
+      <section>
         <h2>Keep it legal and safe</h2>
         <ul>
           <li>Nothing sexual involving minors. That includes drawn or animated content. It&apos;s removed and the account is banned straight away.</li>

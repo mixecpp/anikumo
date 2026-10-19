@@ -67,7 +67,11 @@ export default function PlayerProvider({ children }: { children: React.ReactNode
     setPopped(false);
   }, []);
 
-  const value = useMemo(() => ({ open, attach, height, stuck, popped, setPopped }), [open, attach, height, stuck, popped]);
+  const nowPlaying = useMemo(
+    () => (session ? { anilistId: session.props.anilistId, episode: session.props.episode, title: session.title, image: session.image } : null),
+    [session],
+  );
+  const value = useMemo(() => ({ open, attach, height, stuck, popped, setPopped, nowPlaying }), [open, attach, height, stuck, popped, nowPlaying]);
 
   return (
     <PlayerContext.Provider value={value}>

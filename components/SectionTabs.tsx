@@ -15,7 +15,7 @@ export default function SectionTabs() {
   if (!group?.items) return null;
   return (
     <nav aria-label={group.href === "/browse" ? "Browse sections" : "Community sections"} className="scrollbar-none mx-auto flex max-w-[1400px] gap-1.5 overflow-x-auto px-4 pt-3 lg:hidden">
-      {group.items.map((item) => {
+      {group.items.filter((item) => !item.action).map((item) => {
         const on = isActive(pathname, item.href);
         return (
           <Link
