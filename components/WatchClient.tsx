@@ -126,7 +126,14 @@ function EpisodeWatch(p: Props) {
     <div>
       {p.embedsEnabled ? (
         <div ref={wrap} className="aspect-video w-full overflow-hidden rounded-2xl bg-black">
-          <iframe ref={frame} key={playerUrl} src={playerUrl} title={`${p.title} - Episode ${p.episode}`} width="100%" height="480" frameBorder="0" className="h-full w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />
+          {/*
+            Cage the player so its ad scripts can't reach the user: no allow-popups means no
+            popunders, and no allow-top-navigation means it can't redirect the tab. allow-scripts
+            runs the player, and allow-same-origin keeps its origin real so our postMessage
+            controls (resume, skip, progress) still work. This is enforced by the browser, so it
+            ships with the page — users need no extension.
+          */}
+          <iframe ref={frame} key={playerUrl} src={playerUrl} title={`${p.title} - Episode ${p.episode}`} width="100%" height="480" frameBorder="0" className="h-full w-full" allow="autoplay; fullscreen; picture-in-picture" referrerPolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-orientation-lock" allowFullScreen />
         </div>
       ) : <div className="grid aspect-video w-full place-items-center rounded-2xl border border-line bg-surface p-6"><p className="text-sm text-muted">Playback is currently disabled.</p></div>}
       <PlaybackBar
