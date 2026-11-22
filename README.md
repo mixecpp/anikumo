@@ -1,4 +1,7 @@
-# AniKumo
+# THIS WAS MADE NEARLY COMPLETLY BY CLAUDE, AND WAS A AI EXPERIMENT PROJECT
+
+
+## AniKumo
 
 Anime discovery + watching site. Next.js 15, Prisma/SQLite, AniList metadata.
 
